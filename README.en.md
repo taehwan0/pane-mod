@@ -2,9 +2,45 @@
 
 [한국어](README.md) | English
 
-A Claude Code mod (a functional hook plugin) that draws Claude Code's HUD in a side pane. Where the screen cannot dock a pane it draws above the prompt (the band), and if you like it can stay as a single line under the prompt. It shows the project, the model and its effort, usage and limits, the context, Claude's tasks, subagents and a searchable work log. Give it a sprite and sounds of your own and the sprite moves, and the sounds play, with the session's state. It was made to stand in for a `statusLine` command.
+A Claude Code mod that draws Claude Code's HUD in a side pane: the model and usage, the context, Claude's tasks, subagents and a work log, with a sprite of your favorite character that moves with the session's state.
 
-> The Korean [README.md](README.md) is the primary, complete reference. This English edition covers the same features more briefly.
+![Sending a question turns the pane's sprite to its working motion; as the answer ends it goes back to idle and the log card gains a line for the turn](docs/demo.gif)
+
+## Quick start
+
+```sh
+claude plugin marketplace add taehwan0/pane-mod
+claude plugin install pane-mod@pane-mod
+```
+
+Restart Claude Code and the HUD appears: in a pane on the right in the fullscreen view, above the prompt elsewhere.
+
+For a sprite, put a character's idle and working frames (PNG) in a folder and point pane-mod at it.
+
+```text
+~/.config/pane-mod/my-character/
+├── idle/     frame_001.png …    # between turns
+├── working/  frame_001.png …    # a model turn under way
+└── sounds/   idle/  working/    # clips per state (optional)
+```
+
+```sh
+echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/me/.config/pane-mod/my-character/sounds"}' \
+  | claude plugin configure pane-mod@pane-mod --values-stdin
+```
+
+- `/pane-mod` opens the pane; `/pane-mod auto|band|pane|hint` changes the layout for the session.
+- Needs Claude Code 2.1.292 or later. Sprites were seen in Ghostty and cmux; Orca (1.4.221) does not draw them.
+- The character in the demo is only an example (see "License").
+- The Korean [README.md](README.md) is the primary, complete reference; this English edition covers the same features more briefly.
+
+## Why
+
+I mostly work on 27- and 32-inch monitors, and I like secondary information in a side panel so the main area stays wide; it is why I loved vertical-tab browsers such as Arc, Zen and Dia. Claude Code's HUD figures are always useful, but above or below the prompt they take room from where prompts and answers appear. I always wanted them out of the way, and once Claude Code's mods could draw a side pane, I moved them to the right.
+
+## What the HUD draws
+
+A sketch of the HUD in text.
 
 Band (above the prompt, when no pane is shown):
 
@@ -41,10 +77,6 @@ Pane (docked on the right, cards in rounded borders):
   then the tasks, subagents, context, recent and log cards (in paneOrder; each only with something to show and its setting on)
 ```
 
-## Why
-
-I mostly work on 27- and 32-inch monitors, and I like secondary information in a side panel so the main area stays wide; it is why I loved vertical-tab browsers such as Arc, Zen and Dia. Claude Code's HUD figures are always useful, but above or below the prompt they take room from where prompts and answers appear. I always wanted them out of the way, and once Claude Code's mods could draw a side pane, I moved them to the right.
-
 ## Requirements
 
 - Built and tested on Claude Code 2.1.292 and later, a version that loads mods (`modules` in `hooks/hooks.json`).
@@ -55,14 +87,9 @@ I mostly work on 27- and 32-inch monitors, and I like secondary information in a
 
 ## Install
 
-[INSTALL.md](INSTALL.md) (Korean) has the full procedure: the settings to choose, how to check, troubleshooting, and the rules for an AI that installs it. This repository is itself a marketplace (`.claude-plugin/marketplace.json`).
+The commands are in "Quick start"; [INSTALL.md](INSTALL.md) (Korean) has the settings to choose, how to check, troubleshooting, and the rules for an AI that installs it. This repository is itself a marketplace (`.claude-plugin/marketplace.json`).
 
-```
-claude plugin marketplace add taehwan0/pane-mod
-claude plugin install pane-mod@pane-mod
-```
-
-Restart Claude Code to apply it. With a clone, you can add its folder as the marketplace instead (`claude plugin marketplace add ~/work/pane-mod`); then `/reload-plugins` in a running session reads your edits at once. To try it for one session without installing:
+With a clone, you can add its folder as the marketplace instead (`claude plugin marketplace add ~/work/pane-mod`); then `/reload-plugins` in a running session reads your edits at once. To try it for one session without installing:
 
 ```
 claude --plugin-dir ~/work/pane-mod
@@ -201,24 +228,7 @@ No sprite frames or sound clips are in the repository. Point `spriteDir` and `so
 
 ### Example: your favorite character as the sprite
 
-![Sending a question turns the pane's sprite to its working motion; as the answer ends it goes back to idle and the log card gains a line for the turn](docs/demo.gif)
-
-Cut the idle (between turns) and working (a model turn under way) motions of a character you like into frames, and point pane-mod at them: idle frames in `idle/`, working frames in `working/`, and `spriteDir` set to the folder. Set `soundDir` too for sounds per state.
-
-The capture above, at 1.5× speed, shows such a sprite through one question. As the question goes, the pane's sprite turns to its working motion beside the ` ● WORKING ` badge and the time; as the answer ends it goes back to idle, and the log card gains a line for the turn.
-
-```text
-~/.config/pane-mod/my-character/
-├── idle/     frame_001.png …    # idle
-├── working/  frame_001.png …    # working
-└── sounds/
-    ├── idle/  working/          # clips per state (optional)
-```
-
-```sh
-echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/me/.config/pane-mod/my-character/sounds"}' \
-  | claude plugin configure pane-mod@pane-mod --values-stdin
-```
+The demo at the top is a character's idle (between turns) and working (a model turn under way) motions, cut into frames and set as `spriteDir`, recorded through one question at 1.5× speed. As the question goes, the pane's sprite turns to its working motion beside the ` ● WORKING ` badge and the time; as the answer ends it goes back to idle, and the log card gains a line for the turn. The folder layout and the command that sets it are in "Quick start".
 
 - The sprite was seen drawn in Ghostty and cmux.
 - Orca does not draw it as of its current version (1.4.221); pane-mod then leaves the sprite's room to the text (see "Requirements").
@@ -262,7 +272,7 @@ Usage, turns and subagents are read every 2 seconds; branch, hooks, tools and md
 | `types/index.d.ts` | Shared types and the `$.state` contract |
 | `tests/pane-mod.test.tsx` | Tests (`claude plugin test .`) |
 | `docs/sprite-states.md` | States that could be told apart, sprites needed, how to make them (Korean) |
-| `docs/demo.gif` | The demo in "Example" |
+| `docs/demo.gif` | The demo at the top |
 | `INSTALL.md`, `AGENTS.md` | Installing, and the rules for AI coding agents (Korean) |
 | `LICENSE` | MIT |
 

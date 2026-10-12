@@ -148,7 +148,7 @@ pane-mod/
 ├── tests/pane-mod.test.tsx  # claude-code/testing 기반 테스트 79개
 ├── assets/                  # 선택 사항인 로컬 스프라이트·소리 폴더 (git 제외, 저장소에는 없음. 아래 "asset" 참고)
 ├── docs/sprite-states.md    # 구분할 수 있는 상태, 필요한 스프라이트, 스프라이트 제작 규격
-├── docs/demo.gif            # README "사례"의 데모 화면 (화면 녹화를 1.5배속 GIF로 변환)
+├── docs/demo.gif            # README 맨 위의 데모 화면 (화면 녹화를 1.5배속 GIF로 변환)
 ├── tsconfig.json            # .claude-plugin/types/tsconfig.json을 extends합니다.
 ├── README.md                # 기능, 설정, 레이아웃, 알림, 표시 항목, 이 mod가 컴퓨터에서 하는 일 (한국어, 기준 문서)
 ├── README.en.md             # README의 영어판

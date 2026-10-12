@@ -2,7 +2,45 @@
 
 한국어 | [English](README.en.md)
 
-Claude Code의 HUD를 오른쪽 pane에 그리는 mod(함수형 hook 플러그인)입니다. 화면이 pane을 붙일 수 없으면 입력창 위(band)에 그리고, 원하면 입력창 아래 힌트 줄에 한 줄로만 둘 수도 있습니다. 프로젝트, 모델과 effort, 사용량과 한도, 컨텍스트, Claude의 작업, 서브에이전트, 검색할 수 있는 작업 로그를 보여 줍니다. 직접 준비한 스프라이트와 소리를 지정하면 세션 상태에 맞춰 스프라이트가 움직이고 소리가 납니다. `statusLine` 명령 대신 쓸 수 있도록 만들었습니다.
+Claude Code의 HUD를 오른쪽 pane에 그리는 mod입니다. 모델과 사용량, 컨텍스트, Claude의 작업, 서브에이전트, 작업 로그를 보여 주고, 좋아하는 캐릭터를 스프라이트로 지정하면 세션 상태에 맞춰 움직입니다.
+
+![질문을 보내면 pane의 스프라이트가 working 동작으로 바뀌고, 답이 끝나면 idle 동작으로 돌아오며 log 카드에 그 턴이 한 줄 남는 모습](docs/demo.gif)
+
+## 빠른 시작
+
+```sh
+claude plugin marketplace add taehwan0/pane-mod
+claude plugin install pane-mod@pane-mod
+```
+
+Claude Code를 다시 시작하면 HUD가 나타납니다. 전체 화면 보기에서는 오른쪽 pane에, 그 밖에서는 입력창 위에 그립니다.
+
+스프라이트를 쓰려면 캐릭터의 idle·working 프레임(PNG)을 폴더에 넣고 그 폴더를 지정합니다.
+
+```text
+~/.config/pane-mod/my-character/
+├── idle/     frame_001.png …    # 턴 사이
+├── working/  frame_001.png …    # 모델 턴 진행 중
+└── sounds/   idle/  working/    # 상태별 소리 (선택)
+```
+
+```sh
+echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/me/.config/pane-mod/my-character/sounds"}' \
+  | claude plugin configure pane-mod@pane-mod --values-stdin
+```
+
+- `/pane-mod`로 pane을 열고, `/pane-mod auto|band|pane|hint`로 이번 세션의 레이아웃을 바꿉니다.
+- Claude Code 2.1.292 이상이 필요합니다. 스프라이트는 Ghostty와 cmux에서 확인했고, Orca(1.4.221)에서는 그려지지 않습니다.
+- 데모의 캐릭터는 예시입니다(아래 "라이선스" 참고).
+- 설정 항목, 문제 해결, AI에게 설치를 맡기는 방법은 [INSTALL.md](INSTALL.md)에 있습니다.
+
+## 만든 이유
+
+27인치와 32인치 모니터를 주로 쓰면서, 보조 정보는 왼쪽이나 오른쪽 패널에 두고 가운데의 주 작업 영역을 넓게 쓰는 배치를 좋아하게 되었습니다. Arc, Zen, Dia 같은 세로 탭 브라우저를 즐겨 쓴 것도 같은 이유였습니다. Claude Code의 HUD 정보는 늘 필요하지만, 입력창 위아래에 두면 프롬프트와 응답이 나오는 영역이 그만큼 줄어듭니다. 그래서 늘 옆으로 치우고 싶었고, Claude Code가 mod로 옆 pane을 지원하게 되면서 그 정보를 오른쪽으로 옮겼습니다.
+
+## 화면 구성
+
+HUD가 그리는 내용을 글자로 옮긴 도식입니다.
 
 band (입력창 위, pane이 없을 때):
 
@@ -39,10 +77,6 @@ pane (오른쪽에 붙을 때, 카드는 둥근 테두리):
   이어서 tasks, subagents, context, recent, log 카드 (기본 순서, paneOrder로 바꿈. 내용이 있고 설정이 켜져 있을 때만)
 ```
 
-## 만든 이유
-
-27인치와 32인치 모니터를 주로 쓰면서, 보조 정보는 왼쪽이나 오른쪽 패널에 두고 가운데의 주 작업 영역을 넓게 쓰는 배치를 좋아하게 되었습니다. Arc, Zen, Dia 같은 세로 탭 브라우저를 즐겨 쓴 것도 같은 이유였습니다. Claude Code의 HUD 정보는 늘 필요하지만, 입력창 위아래에 두면 프롬프트와 응답이 나오는 영역이 그만큼 줄어듭니다. 그래서 늘 옆으로 치우고 싶었고, Claude Code가 mod로 옆 pane을 지원하게 되면서 그 정보를 오른쪽으로 옮겼습니다.
-
 ## 요구 사항
 
 - Claude Code 2.1.292 이상에서 만들고 시험했습니다. mod(`hooks/hooks.json`의 `modules`)를 지원하는 버전이어야 합니다.
@@ -53,14 +87,9 @@ pane (오른쪽에 붙을 때, 카드는 둥근 테두리):
 
 ## 설치
 
-자세한 절차(설치 중에 정할 설정, 확인 방법, 문제 해결, AI에게 설치를 맡길 때의 규칙)는 [INSTALL.md](INSTALL.md)에 있습니다. 이 저장소 자체가 마켓플레이스(`.claude-plugin/marketplace.json`)입니다.
+설치 명령은 위의 "빠른 시작"에 있고, 설치 중에 정할 설정과 확인 방법, 문제 해결은 [INSTALL.md](INSTALL.md)에 있습니다. 이 저장소 자체가 마켓플레이스(`.claude-plugin/marketplace.json`)입니다.
 
-```
-claude plugin marketplace add taehwan0/pane-mod
-claude plugin install pane-mod@pane-mod
-```
-
-설치한 뒤 Claude Code를 다시 시작하면 적용됩니다. 저장소를 clone했다면 그 폴더를 마켓플레이스로 등록할 수도 있습니다(`claude plugin marketplace add ~/work/pane-mod`). 이 경우 파일을 고친 뒤 실행 중인 세션에서 `/reload-plugins`를 입력하면 바로 다시 읽습니다. 설치하지 않고 한 세션에서만 써 보려면 다음과 같이 실행합니다.
+저장소를 clone했다면 그 폴더를 마켓플레이스로 등록할 수도 있습니다(`claude plugin marketplace add ~/work/pane-mod`). 이 경우 파일을 고친 뒤 실행 중인 세션에서 `/reload-plugins`를 입력하면 바로 다시 읽습니다. 설치하지 않고 한 세션에서만 써 보려면 다음과 같이 실행합니다.
 
 ```
 claude --plugin-dir ~/work/pane-mod
@@ -320,24 +349,7 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 
 ### 사례: 좋아하는 캐릭터를 스프라이트로
 
-![질문을 보내면 pane의 스프라이트가 working 동작으로 바뀌고, 답이 끝나면 idle 동작으로 돌아오며 log 카드에 그 턴이 한 줄 남는 모습](docs/demo.gif)
-
-좋아하는 캐릭터의 idle(턴 사이)과 working(모델 턴 진행 중) 상태를 스프라이트 프레임으로 뽑아서 지정할 수 있습니다. idle 프레임은 `idle/`에, working 프레임은 `working/`에 넣고 `spriteDir`로 그 폴더를 가리키면 됩니다. 상태별 소리를 쓰려면 `soundDir`도 지정합니다.
-
-위 화면은 그렇게 준비한 스프라이트로 질문 하나를 처리하는 모습을 1.5배속으로 녹화한 것입니다. 질문을 보내면 pane의 스프라이트가 working 동작으로 바뀌고 ` ● WORKING ` 배지와 경과 시간이 나타납니다. 답이 끝나면 idle 동작으로 돌아오고, log 카드에 그 턴이 한 줄 남습니다.
-
-```text
-~/.config/pane-mod/my-character/
-├── idle/     frame_001.png …    # idle
-├── working/  frame_001.png …    # working
-└── sounds/
-    ├── idle/  working/          # 상태별 소리 (선택)
-```
-
-```sh
-echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/me/.config/pane-mod/my-character/sounds"}' \
-  | claude plugin configure pane-mod@pane-mod --values-stdin
-```
+맨 위의 데모는 좋아하는 캐릭터의 idle(턴 사이)과 working(모델 턴 진행 중) 상태를 프레임으로 뽑아 `spriteDir`로 지정하고, 질문 하나를 처리하는 모습을 1.5배속으로 녹화한 것입니다. 질문을 보내면 pane의 스프라이트가 working 동작으로 바뀌고 ` ● WORKING ` 배지와 경과 시간이 나타납니다. 답이 끝나면 idle 동작으로 돌아오고, log 카드에 그 턴이 한 줄 남습니다. 폴더 구성과 지정하는 명령은 "빠른 시작"에 있습니다.
 
 - 스프라이트가 그려지는 것은 Ghostty와 cmux에서 확인했습니다.
 - Orca에서는 현재 버전(1.4.221) 기준으로 그려지지 않습니다. 이때 pane-mod는 스프라이트 자리를 비우고 글자 HUD만 표시합니다(위 "요구 사항" 참고).
@@ -395,7 +407,7 @@ echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/
 | `INSTALL.md` | 설치 절차 |
 | `AGENTS.md` | AI 코딩 에이전트를 위한 지침(구조, 개발 절차, 설치 절차) |
 | `docs/sprite-states.md` | 구분할 수 있는 상태와 필요한 스프라이트, 제작 규격 |
-| `docs/demo.gif` | README "사례"의 데모 화면 |
+| `docs/demo.gif` | README 맨 위의 데모 화면 |
 | `LICENSE` | MIT 라이선스 |
 
 ## 개발
