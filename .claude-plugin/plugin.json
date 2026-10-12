@@ -124,6 +124,12 @@
       "description": "The pane's recent card: the skills and the MCP tools the session used lately, the most recent first, five of each. Nothing shows while there is none",
       "default": true
     },
+    "showChanges": {
+      "type": "boolean",
+      "title": "Show the changes section",
+      "description": "The pane's changes card: the files the latest turn that changed any changed with Edit or Write, with the lines added and removed. A file's row opens its diff over the whole pane. Nothing shows while there is none",
+      "default": true
+    },
     "showLog": {
       "type": "boolean",
       "title": "Show the log section",
@@ -154,8 +160,8 @@
     "paneOrder": {
       "type": "string",
       "title": "Order of the pane's lower cards",
-      "description": "The cards under the pane's first card and model card, top to bottom: tasks, agents, context, recent and log, separated by commas or spaces. A name left out follows in the default order and an unknown name is ignored, so ordering never hides a card (the show settings do). The wheel pages the log only while log is last; elsewhere its buttons and the keys o and n still do",
-      "default": "tasks,agents,context,recent,log"
+      "description": "The cards under the pane's first card and model card, top to bottom: tasks, agents, context, recent, changes and log, separated by commas or spaces. A name left out follows in the default order and an unknown name is ignored, so ordering never hides a card (the show settings do). The wheel pages the log only while log is last; elsewhere its buttons and the keys o and n still do",
+      "default": "tasks,agents,context,recent,changes,log"
     },
     "sessionColor": {
       "type": "string",

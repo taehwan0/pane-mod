@@ -1058,7 +1058,7 @@ export const logWheel = (
 }
 
 /** The pane's cards under its first two (the session's and the model's), in their default order. */
-export const PANE_CARDS = ['tasks', 'agents', 'context', 'recent', 'log'] as const
+export const PANE_CARDS = ['tasks', 'agents', 'context', 'recent', 'changes', 'log'] as const
 export type PaneCard = (typeof PANE_CARDS)[number]
 
 /**
@@ -1128,4 +1128,228 @@ export const barGlyphOf = (value: unknown, fallback: string): string => {
   if (/[\p{M}\p{Cc}\p{Cf}\p{Cs}\p{Cn}\p{Z}\p{Emoji_Presentation}]/u.test(char) || isWide(char.codePointAt(0) ?? 0)) return fallback
 
   return char
+}
+
+/** A path as the pane names it: from the working directory where it lies under it, else whole. */
+export const pathIn = (path: string, cwd: string): string => {
+  const root = cwd.replace(/\/+$/, '')
+
+  return root !== '' && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path
+}
+
+/** Cuts a text to `max` cells from its start, an ellipsis first where it was longer: a path keeps its file's name. */
+export const clipStart = (text: string, max: number): string => {
+  if (cellsOf(text) <= max) return text
+  const chars = [...text]
+  let kept = ''
+  let used = 0
+
+  for (let at = chars.length - 1; at >= 0; at -= 1) {
+    const char = chars[at] ?? ''
+    const cells = cellsOf(char)
+
+    if (used + cells > max - 1) break
+    kept = `${char}${kept}`
+    used += cells
+  }
+
+  return `…${kept}`
+}
+
+/** One line of a diff: kept as it was, removed, or added. */
+export type DiffLine = { kind: ' ' | '-' | '+'; text: string }
+
+/** A run of a diff's lines, with the numbers its first line has in the text before and in the text after. */
+export type Hunk = { oldStart: number; newStart: number; lines: DiffLine[] }
+
+/** The most lines a diff finds removed and added one by one; past them, what lies between the common head and tail is taken as replaced whole. */
+export const DIFF_EDITS = 1_000
+
+/** The kept lines a diff shows on either side of a change. */
+export const DIFF_CONTEXT = 3
+
+/** A file's text as lines: a final newline ends its last line rather than starting another, and a CR before a newline is dropped. */
+export const linesOf = (text: string): string[] => {
+  if (text === '') return []
+  const lines = text.split('\n')
+
+  if (lines[lines.length - 1] === '') lines.pop()
+
+  return lines.map(line => line.replace(/\r$/, ''))
+}
+
+/**
+ * Walks back the furthest points each round of `shortestEdit` reached, from
+ * the end of both lists to their start, into the lines kept, removed and added.
+ */
+const editsOf = (a: readonly string[], b: readonly string[], trace: readonly Int32Array[], offset: number): DiffLine[] => {
+  const lines: DiffLine[] = []
+  let x = a.length
+  let y = b.length
+
+  for (let d = trace.length - 1; d >= 0; d -= 1) {
+    const reached = trace[d]
+    const at = (k: number): number => reached?.[offset + k] ?? 0
+    const k = x - y
+    const from = k === -d || (k !== d && at(k - 1) < at(k + 1)) ? k + 1 : k - 1
+    const fromX = at(from)
+    const fromY = fromX - from
+
+    while (x > fromX && y > fromY) {
+      x -= 1
+      y -= 1
+      lines.push({ kind: ' ', text: a[x] ?? '' })
+    }
+    if (d > 0) lines.push(x === fromX ? { kind: '+', text: b[fromY] ?? '' } : { kind: '-', text: a[fromX] ?? '' })
+    x = fromX
+    y = fromY
+  }
+
+  return lines.reverse()
+}
+
+/**
+ * The shortest edit from one list of lines to the other (Myers' greedy
+ * algorithm) as the lines kept, removed and added in order; null where it
+ * takes more than `limit` lines removed and added.
+ */
+const shortestEdit = (a: readonly string[], b: readonly string[], limit: number): DiffLine[] | null => {
+  const max = Math.min(a.length + b.length, limit)
+  const offset = max + 1
+  // The furthest x reached on each diagonal k (x - y), at `offset + k`; each round's start is kept to walk back.
+  const reached = new Int32Array(2 * max + 3)
+  const trace: Int32Array[] = []
+  const at = (k: number): number => reached[offset + k] ?? 0
+
+  for (let d = 0; d <= max; d += 1) {
+    trace.push(reached.slice())
+    for (let k = -d; k <= d; k += 2) {
+      let x = k === -d || (k !== d && at(k - 1) < at(k + 1)) ? at(k + 1) : at(k - 1) + 1
+      let y = x - k
+
+      while (x < a.length && y < b.length && a[x] === b[y]) {
+        x += 1
+        y += 1
+      }
+      reached[offset + k] = x
+      if (x >= a.length && y >= b.length) return editsOf(a, b, trace, offset)
+    }
+  }
+
+  return null
+}
+
+/**
+ * The lines of a diff from `before` to `after`: the common head and tail kept,
+ * the shortest edit between them, or, past `limit` lines removed and added,
+ * every line between them removed and then added.
+ */
+export const lineDiff = (before: readonly string[], after: readonly string[], limit = DIFF_EDITS): DiffLine[] => {
+  let head = 0
+
+  while (head < before.length && head < after.length && before[head] === after[head]) head += 1
+  let tail = 0
+
+  while (tail < before.length - head && tail < after.length - head && before[before.length - 1 - tail] === after[after.length - 1 - tail]) tail += 1
+  const a = before.slice(head, before.length - tail)
+  const b = after.slice(head, after.length - tail)
+  const kept = (text: string): DiffLine => ({ kind: ' ', text })
+  const middle = shortestEdit(a, b, limit) ?? [...a.map((text): DiffLine => ({ kind: '-', text })), ...b.map((text): DiffLine => ({ kind: '+', text }))]
+
+  return [...before.slice(0, head).map(kept), ...middle, ...before.slice(before.length - tail).map(kept)]
+}
+
+/** The lines a diff adds and removes. */
+export const diffCounts = (lines: readonly DiffLine[]): { added: number; removed: number } => ({
+  added: lines.filter(line => line.kind === '+').length,
+  removed: lines.filter(line => line.kind === '-').length,
+})
+
+/**
+ * The hunks of a diff: each change with up to `context` kept lines on either
+ * side, changes whose context meets joined in one; Infinity makes the whole
+ * text one hunk. None where nothing changed.
+ */
+export const hunksOf = (lines: readonly DiffLine[], context: number): Hunk[] => {
+  const numbers: { old: number; new: number }[] = []
+  const spans: { from: number; to: number }[] = []
+  let old = 1
+  let now = 1
+
+  for (const line of lines) {
+    numbers.push({ old, new: now })
+    if (line.kind !== '+') old += 1
+    if (line.kind !== '-') now += 1
+  }
+  lines.forEach((line, index) => {
+    if (line.kind === ' ') return
+    const from = Math.max(0, index - context)
+    const to = Math.min(lines.length - 1, index + context)
+    const last = spans[spans.length - 1]
+
+    if (last !== undefined && from <= last.to + 1) last.to = to
+    else spans.push({ from, to })
+  })
+
+  return spans.map(span => ({ oldStart: numbers[span.from]?.old ?? 1, newStart: numbers[span.from]?.new ?? 1, lines: lines.slice(span.from, span.to + 1) }))
+}
+
+/** A hunk header's range: the first line and the count, the count left out where it is one, the line before where it is none. */
+const rangeOf = (start: number, count: number): string => (count === 1 ? `${start}` : `${count === 0 ? start - 1 : start},${count}`)
+
+/** What a hunk's header may take, held back for it before its lines are counted. */
+const HEADER_CHARS = 40
+
+/**
+ * Hunks as unified-diff text, as `Code` draws it under `format: 'diff'`, up to
+ * `max` characters: the hunk that would pass them is cut short (its header
+ * counts the lines left) and the rest left out, which `isCut` says. A control
+ * character other than a tab, which `Code` refuses, is drawn as U+FFFD.
+ */
+export const unifiedOf = (hunks: readonly Hunk[], max: number): { text: string; isCut: boolean } => {
+  const parts: string[] = []
+  let used = 0
+
+  for (const hunk of hunks) {
+    if (used + HEADER_CHARS > max) return { text: parts.join('\n'), isCut: true }
+    used += HEADER_CHARS
+    const rows: string[] = []
+    let olds = 0
+    let news = 0
+    let isCut = false
+
+    for (const line of hunk.lines) {
+      const row = `${line.kind}${line.text.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/g, '�')}`
+
+      if (used + row.length + 1 > max) {
+        isCut = true
+        break
+      }
+      rows.push(row)
+      used += row.length + 1
+      if (line.kind !== '+') olds += 1
+      if (line.kind !== '-') news += 1
+    }
+    if (rows.length > 0) parts.push(`@@ -${rangeOf(hunk.oldStart, olds)} +${rangeOf(hunk.newStart, news)} @@`, ...rows)
+    if (isCut) return { text: parts.join('\n'), isCut: true }
+  }
+
+  return { text: parts.join('\n'), isCut: false }
+}
+
+/**
+ * A file's diff as the pane draws it: its whole text with the changed lines
+ * marked (`isWhole`), or its changes with DIFF_CONTEXT lines around each, up
+ * to `max` characters. A whole text past them falls back to the changes.
+ */
+export const diffOf = (before: string, after: string, isWhole: boolean, max: number): { text: string; isCut: boolean; isWhole: boolean } => {
+  const lines = lineDiff(linesOf(before), linesOf(after))
+
+  if (isWhole) {
+    const whole = unifiedOf(hunksOf(lines, Infinity), max)
+
+    if (!whole.isCut) return { ...whole, isWhole: true }
+  }
+
+  return { ...unifiedOf(hunksOf(lines, DIFF_CONTEXT), max), isWhole: false }
 }

@@ -91,10 +91,17 @@ export type TaskItem = { id: string; subject: string; status: 'pending' | 'in_pr
 export type Totals = { input: number; output: number; cacheRead: number; cacheWrite: number; turns: number }
 
 /** The pane's sections (and the band's rows they share) that the settings turn on or off. */
-export type SectionName = 'session' | 'now' | 'tasks' | 'model' | 'usage' | 'totals' | 'context' | 'recent' | 'log'
+export type SectionName = 'session' | 'now' | 'tasks' | 'model' | 'usage' | 'totals' | 'context' | 'recent' | 'changes' | 'log'
 
 /** The skills and MCP tools the session used lately, the most recent first. */
 export type Recent = { skills: string[]; mcp: string[] }
+
+/**
+ * A file the latest turn that changed any changed (Edit, Write), as the pane
+ * lists it: its path, the name it is shown by, and the lines added and removed
+ * since that turn began; null counts where it was too large to compare.
+ */
+export type ChangeRow = { path: string; name: string; added: number | null; removed: number | null }
 
 /** The colors `/color` gives a session. */
 export type SessionColor = 'red' | 'blue' | 'green' | 'yellow' | 'purple' | 'orange' | 'pink' | 'cyan'
@@ -139,6 +146,8 @@ export type Snapshot = {
   log: (LogEntry & { at: string })[]
   /** The skills and MCP tools of the turn under way and of the log's lines, the most recent first. */
   recent: Recent
+  /** The files the latest turn that changed any changed, in the order first changed. */
+  changes: ChangeRow[]
   /** Claude's tasks, and the session's totals. */
   tasks: TaskItem[]
   totals: Totals
@@ -155,6 +164,8 @@ declare module 'claude-code' {
       logOpen: number | null
       /** The words the pane's log is searched for; empty shows every line. */
       logQuery: string
+      /** The changed file the pane shows the diff of, by its path, and whether whole; null with the cards shown. */
+      diffOpen: { path: string; isWhole: boolean } | null
     }
   }
 }

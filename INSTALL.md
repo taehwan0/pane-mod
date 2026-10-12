@@ -14,7 +14,7 @@
 
 ## 2. 설치 중에 정할 설정
 
-설치 화면이 아래 스물여덟 항목을 묻습니다. 항목은 세 묶음으로 나뉩니다. 무엇을 화면에 노출할지, 스프라이트와 소리를 어떻게 쓸지, 승인 창 아래에 한 줄을 붙일지를 차례로 정합니다. 답하지 않은 항목은 기본값을 씁니다. 셸에서 설치할 때는 고른 값마다 `--config 키=값`으로 넘깁니다.
+설치 화면이 아래 스물아홉 항목을 묻습니다. 항목은 세 묶음으로 나뉩니다. 무엇을 화면에 노출할지, 스프라이트와 소리를 어떻게 쓸지, 승인 창 아래에 한 줄을 붙일지를 차례로 정합니다. 답하지 않은 항목은 기본값을 씁니다. 셸에서 설치할 때는 고른 값마다 `--config 키=값`으로 넘깁니다.
 
 ### 2-1. 노출할 항목
 
@@ -30,15 +30,16 @@
 | `showTotals` | `true`, `false` | `true` | 모델 카드의 비용(세션 비용)과 토큰·캐시 적중률 행입니다. pane에만 있습니다. |
 | `showContext` | `true`, `false` | `false` | context 카드(md 파일, hooks, 도구, MCP, skills, commands 수)와 band 4행입니다. 세션 중에 거의 바뀌지 않아 기본으로 꺼 둡니다. |
 | `showRecent` | `true`, `false` | `true` | recent 카드(이 세션에서 최근에 쓴 skill과 MCP 도구)입니다. pane에만 있으며, 쓴 것이 없으면 그리지 않습니다. |
+| `showChanges` | `true`, `false` | `true` | changes 카드(파일을 고친 가장 최근 턴이 고친 파일과, 추가하고 삭제한 줄 수)입니다. 파일 행을 누르면 pane 전체에 diff가 열립니다. pane에만 있으며, 고친 파일이 없으면 그리지 않습니다. |
 | `showLog` | `true`, `false` | `true` | log 카드(작업 로그, 상세, 파일 열기)입니다. pane에만 있습니다. |
 | `logTurns` | `0`, 5 이상 | `50` | 세션마다 로그에 보관하는 최근 턴 수입니다. `0`이면 모든 턴을 보관합니다. |
 | `logSessions` | `0`, 1 이상 | `30` | 로그를 보관하는 세션 수입니다. 가장 최근에 저장한 세션부터 남기며, `0`이면 세션 수를 제한하지 않습니다. |
 | `logDays` | `0`, 1 이상 | `14` | 마지막으로 저장한 뒤 로그를 보관하는 날수입니다. `0`이면 기간을 제한하지 않습니다. 로그 파일의 위치와 정리 방식은 README의 "로그 보관"에 있습니다. |
 | `agents` | `summary`, `list`, `off` | `summary` | HUD에 서브에이전트를 표시하는 방식입니다. `summary`는 상태별 개수를 한 줄로 보여 줍니다(`↳ subagents 5  ● running 2  ◐ waiting 1  ✓ done 1  ✗ failed 1`). `list`는 에이전트마다 한 줄씩 보여 줍니다(이름과 타입, 작업 설명, 경과 시간, 도구 호출 수, 현재 도구). `off`는 표시하지 않습니다. 어느 쪽을 골라도 입력창 아래의 Claude Code 작업 목록은 그대로 표시됩니다. mod가 그 목록을 제어할 수 없기 때문입니다. |
-| `paneOrder` | `tasks`, `agents`, `context`, `recent`, `log`를 쉼표나 공백으로 구분한 순서 | `tasks,agents,context,recent,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙이므로 순서 때문에 카드가 사라지지는 않습니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없고, 버튼과 `o` / `n` 키로만 넘깁니다. |
+| `paneOrder` | `tasks`, `agents`, `context`, `recent`, `changes`, `log`를 쉼표나 공백으로 구분한 순서 | `tasks,agents,context,recent,changes,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙이므로 순서 때문에 카드가 사라지지는 않습니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없고, 버튼과 `o` / `n` 키로만 넘깁니다. |
 | `sessionColor` | `auto`, 테마 키, `#rrggbb` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 따르고, 고른 색이 없으면 흐린 노랑을 씁니다. 다른 값을 적으면 `/color`와 관계없이 그 색으로 고정합니다. |
 | `modelColor` | 테마 키, `#rrggbb` | `claude` | 모델 카드의 테두리 색입니다. |
-| `cardColor` | 테마 키, `#rrggbb` | `subtle` | 나머지 카드(tasks, subagents, context, recent, log)의 테두리 색입니다. |
+| `cardColor` | 테마 키, `#rrggbb` | `subtle` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. |
 | `barFilled` | 폭이 한 칸인 문자 하나 | `▰` | 모든 게이지(effort, ctx, 5h, 7d)에서 채워진 칸을 그리는 문자입니다. 이모지, 전각 문자, 공백, 제어 문자는 받지 않습니다. |
 | `barEmpty` | 폭이 한 칸인 문자 하나 | `▱` | 모든 게이지에서 빈칸을 그리는 문자입니다. 조건은 `barFilled`와 같습니다. |
 

@@ -74,7 +74,7 @@ Pane (docked on the right, cards in rounded borders):
 │ $16.28                                           │
 │ 37.2M in · 182k out · cache 99%                  │
 ╰──────────────────────────────────────────────────╯
-  then the tasks, subagents, context, recent and log cards (in paneOrder; each only with something to show and its setting on)
+  then the tasks, subagents, context, recent, changes and log cards (in paneOrder; each only with something to show and its setting on)
 ```
 
 ## Requirements
@@ -120,11 +120,12 @@ Choose them as you install (INSTALL.md, chapter 2), and change them afterwards a
 | `showTotals` | `true` | The session's cost, its input and output tokens and the cache's share. |
 | `showContext` | `false` | The context card (md files, hooks, tools, MCP, skills, commands); off by default as it seldom changes. |
 | `showRecent` | `true` | The recent card: the skills and MCP tools used lately. |
+| `showChanges` | `true` | The changes card: the files the latest turn that changed any changed with Edit or Write, with the lines added and removed. A file's row opens its diff over the whole pane. |
 | `showLog` | `true` | The log card (the work log, its detail, open as a file). |
 | `logTurns` | `50` | Turns kept per session, the oldest let go of first. `0` keeps every turn; 1 to 4 count as 5. |
 | `logSessions` | `30` | Sessions whose logs are kept, the most recently saved first. `0`: no limit. |
 | `logDays` | `14` | Days a log is kept after its last save. `0`: no limit. |
-| `paneOrder` | `tasks,agents,context,recent,log` | The order of the cards under the first card and the model card, separated by commas or spaces, in any case. Unknown and repeated names are ignored, and cards not named follow in their default order, so no card goes missing; hide one with its `show…` setting. With `log` anywhere but last, the wheel does not page the log. |
+| `paneOrder` | `tasks,agents,context,recent,changes,log` | The order of the cards under the first card and the model card, separated by commas or spaces, in any case. Unknown and repeated names are ignored, and cards not named follow in their default order, so no card goes missing; hide one with its `show…` setting. With `log` anywhere but last, the wheel does not page the log. |
 | `sessionColor` | `auto` | The first card's border and the session's name. `auto` follows `/color` (a dim yellow with none); a theme key or `#rrggbb` fixes it. |
 | `modelColor` | `claude` | The model card's border: a theme key or `#rrggbb`. |
 | `cardColor` | `subtle` | The other cards' borders: a theme key or `#rrggbb`. |
@@ -157,7 +158,7 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 
 | When (`layout: auto`) | What happens |
 |---|---|
-| Fullscreen view, wide enough | A pane (56 columns asked) docks on the right: a first card the pane's width with the session, the turn under way and a small sprite (12×6), then the model card (model, effort, usage, cost) and the tasks, subagents, context, recent and log cards. The band stays empty, or holds one line with `bandWithPane: line`. |
+| Fullscreen view, wide enough | A pane (56 columns asked) docks on the right: a first card the pane's width with the session, the turn under way and a small sprite (12×6), then the model card (model, effort, usage, cost) and the tasks, subagents, context, recent, changes and log cards. The band stays empty, or holds one line with `bandWithPane: line`. |
 | A narrower window, or another pane's tab in front | The pane is seen not to be placed or shown, and the band spreads into the five-row HUD. |
 | Not fullscreen | No pane opens; one seated above the prompt closes, and the band draws. |
 | You closed the pane | It does not open again by itself; `/pane-mod` opens it. |
@@ -178,6 +179,13 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 - **Where it is kept**: one JSON file per session id in `~/.claude/plugins/data/pane-mod-pane-mod/sessions/` (the folder `CLAUDE_PLUGIN_DATA` names), written as each turn ends, with the session's color, Claude's tasks and the token totals. A session that ends while a turn runs (its terminal closed, its process signalled) keeps that turn as a stopped line. `claude -c` and `--resume` find the session's log again.
 - **Limits**: `logTurns`, `logSessions` and `logDays` apply as each log is saved; a file past them is removed with `/bin/rm` (or emptied where no process can run, as in the desktop app, and removed later). As Claude Code reads and writes at most 4 MiB a file, past 200 lines the oldest are sealed 200 to a file (`<id>.1.json`, `<id>.2.json`, …), never written again. Each line's fields are capped in count and length (about 17 KiB at worst, about 0.6 KiB for a usual line).
 - Uninstalling the plugin clears its data folder, the logs with it; copy the folder first to keep them.
+
+## Changes and diffs
+
+- **The changes card** lists the files Claude changed with Edit or Write in the latest turn that changed any (subagents' included), in the order first changed, up to eight: each path from the working directory, with the lines added (green `+N`) and removed (red `-N`) since that turn began. A turn that changes nothing leaves the list as it is, the next turn to change a file starts it over, and a file changed back to how it was drops out.
+- **A row opens the file's diff** over the whole pane (so do `1` to `9` while the pane has the keyboard), drawn by Claude Code's `Code` element (`format: 'diff'`) with line numbers, `+`/`-` marks, colors, and syntax highlighting by the file's extension. Its changes show with three lines around each; `w: whole file` shows the whole file with the changed lines marked, and `w: changes only` goes back. `p: prev` and `n: next` move between the files, `b: ◀ back` returns to the cards (Esc closes the pane). The wheel scrolls the pane.
+- **What it compares**: the file before the turn first changed it (the tool's `originalFile`, empty for a file a Write created) with the file read back after its last change, so many edits of one file make one diff. Files changed through Bash (`sed`, formatters, `git checkout`) are not seen.
+- **Limits**: the texts stay in memory only, so a reload or `/clear` empties the list, and turns of past sessions have no diff. A file over 512 KiB is listed with `?` and no diff. One diff draws up to 80,000 characters; a whole file longer than that shows its changes.
 
 ## Session name and color
 
@@ -254,7 +262,7 @@ Usage, turns and subagents are read every 2 seconds; branch, hooks, tools and md
 - **Two external programs, only**: `f: open file` opens the log's Markdown file (`/usr/bin/open`, else `xdg-open`); saving a log removes the log files past the limits with `/bin/rm -f -- <files>`, only log files in the data folder's `sessions/`. `claude plugin validate .` lists them as `$.process.run (via openLogFile, removeKept)`.
 - **Slash command rows**: it reads command output rows (`session.append`, `door: 'command'`) only for `/effort`'s level, `/rename`'s name and `/color`'s color.
 - **Settings hook events** (`PermissionRequest`, `Notification`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`) are observed for the line under approval dialogs and the log, and passed on unchanged.
-- **Files read**: `.git` and `HEAD`, the sprite and sound folders' listings, sprite PNGs (with the `png` source), clips from `soundDir`, and its own log files and their folder. **Files written**: each session's log file (as a turn ends, and as a session ends mid-turn), the log's Markdown file when you ask for it, and log files emptied where `rm` cannot run.
+- **Files read**: `.git` and `HEAD`, the sprite and sound folders' listings, sprite PNGs (with the `png` source), clips from `soundDir`, its own log files and their folder, and the files Edit or Write changed (for the changes card; their text stays in memory). **Files written**: each session's log file (as a turn ends, and as a session ends mid-turn), the log's Markdown file when you ask for it, and log files emptied where `rm` cannot run.
 - **The log holds** each turn's prompt (up to 300 characters, tags removed), edited file names and the first line of commands run, the first line of failed calls' errors (up to 100 characters), the targets of calls asked for or denied, calls by tool, skill and MCP tool names, subagents' types and tasks, times, token counts and cache hits, the session's color, tasks and totals. It never leaves your machine.
 - **Clipboard**: written only when you press `copy prompt` (`$.ui.copy`).
 - **Sprites**: Ghostty and kitty read the PNG files themselves (the `file` source); other terminals are sent each PNG's data once read (the `png` source). When the engine reports drawing the `alt` instead, a refused path switches to data, and a terminal that cannot draw pictures has the sprite hidden.
@@ -268,7 +276,7 @@ Usage, turns and subagents are read every 2 seconds; branch, hooks, tools and md
 | `.claude-plugin/marketplace.json` | Makes this repository a marketplace (`source: "./"`) |
 | `hooks/hooks.json` | The hooks module's path (`./register.tsx`) |
 | `hooks/register.tsx` | Gathering, asset folders, sprite motions, sounds, alerts, the work log, drawing the band and the pane |
-| `hooks/format.ts` | Pure functions: gauges, colors, times, git HEAD, frame and clip lists, the log's shape, search and limits |
+| `hooks/format.ts` | Pure functions: gauges, colors, times, git HEAD, frame and clip lists, the log's shape, search and limits, line diffs |
 | `types/index.d.ts` | Shared types and the `$.state` contract |
 | `tests/pane-mod.test.tsx` | Tests (`claude plugin test .`) |
 | `docs/sprite-states.md` | States that could be told apart, sprites needed, how to make them (Korean) |

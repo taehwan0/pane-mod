@@ -4,6 +4,7 @@ import type { MockClock, TestBody } from 'claude-code/testing'
 
 import { agentCounts, audioMime, bar, barGlyphOf, colorOf, paneOrderOf, modelName, cacheHitOf, cellsOf, clipCells, logWheel, wrapCells, colorSaid, countHooks, dateOf, duration, folderOf, frameAt, framesFor, logFrom, logMatches, logMarkdown, markReached, NO_FRAMES, promptOf, standing, pruneLogs, renameSaid, stampOf, effortGauge, effortGuess, effortLevelOf, effortSaid, gitDirOf, headName, isWorktreeDir, mcpServersOf, memoryOf, minutesToFull, nextFrame, oneLine, soundFiles, spriteFrames, stateOf, targetOf, tint, tokensShort, toolKind, toolsOf, until, withoutFrame } from '../hooks/format'
 import { countTool, errorLine, keptFileOf, limitSetting, LOG_CAPS, mcpNameOf, OTHER_TOOLS, partText, recentOf, sealedOf, sweepOf, toolsLine, withOnce } from '../hooks/format'
+import { clipStart, diffCounts, diffOf, hunksOf, lineDiff, linesOf, pathIn, unifiedOf } from '../hooks/format'
 
 const START = { cwd: '/w/app', surface: 'terminal', isInteractive: true } as const
 const BAND = { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 140, scroll: { offset: 0, bodyRows: 12 }, view: {} }
@@ -1970,6 +1971,174 @@ test('turned off, the recent card is left out', { options: { showRecent: false }
   expect(rows).not.toContain('recent')
 })
 
+/**
+ * The engine beneath the mod with Edit and Write carried out on `ui.files`, each answered with its tool's record
+ * (`originalFile` the text before it, a Write's `type`); a call to a path in `failing` fails and changes nothing.
+ */
+const editing = (on: On, ui: PaneWorld, failing: readonly string[] = []): MockClock => {
+  const clock = working(on, ui)
+
+  on('tool.call', ($, e) => {
+    const call = e as unknown as { tool: string; file_path?: string; old_string?: string; new_string?: string; content?: string }
+    const path = call.file_path ?? ''
+    const before = ui.files[path]?.text
+
+    if (failing.includes(path)) return { result: 'File is locked' as never, text: 'File is locked', isError: true as const }
+    if (call.tool === 'Edit') {
+      ui.files[path] = { text: (before ?? '').replace(call.old_string ?? '', call.new_string ?? ''), mtimeMs: clock.now() }
+
+      return { result: { filePath: path, oldString: call.old_string, newString: call.new_string, originalFile: before ?? '', structuredPatch: [], userModified: false, replaceAll: false } as never, text: 'ok' }
+    }
+    if (call.tool === 'Write') {
+      ui.files[path] = { text: call.content ?? '', mtimeMs: clock.now() }
+
+      return { result: { type: before === undefined ? 'create' : 'update', filePath: path, content: call.content, structuredPatch: [], originalFile: before ?? null } as never, text: 'ok' }
+    }
+
+    return { result: {} as never, text: 'ok' }
+  })
+
+  return clock
+}
+
+/** Twenty lines, `l1` to `l20`, each ending in a newline. */
+const TWENTY = Array.from({ length: 20 }, (_, index) => `l${index + 1}\n`).join('')
+
+test("the changes card lists the files the latest turn changed with the lines added and removed; a file's row opens its diff over the whole pane", async ($, on) => {
+  const ui = paneWorld()
+  const scrolled: number[] = []
+
+  ui.files['/w/app/src/search.ts'] = { text: TWENTY, mtimeMs: 0 }
+  editing(on, ui)
+  // The engine beneath: the pane's window moves to the offset the chain leaves it.
+  on('ui.scroll', ($, e) => {
+    scrolled.push(e.offset)
+
+    return {}
+  })
+  await $.session.start(START)
+  await $.turn.start({ text: 'Rename l2 and split l15', turnId: 'turn_1' })
+  await $.tool.call({ tool: 'Edit', file_path: '/w/app/src/search.ts', old_string: 'l2\n', new_string: 'L2\n' } as never)
+  await $.tool.call({ tool: 'Edit', file_path: '/w/app/src/search.ts', old_string: 'l15\n', new_string: 'L15\nl15b\n' } as never)
+  await $.tool.call({ tool: 'Write', file_path: '/w/app/src/new.ts', content: 'export const b = 1\n' } as never)
+  await $.turn.complete({ ...TURN, reason: 'answer' })
+
+  const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: PANE_PROPS, viewport: DOCKING })
+
+  // Above the log by default; two edits of one file make one row, counted from before the turn, and a file the Write
+  // made is all added. Each row is named from the working directory, the first nine pressed by their number too.
+  expect(await cardKeys(pane)).toEqual(['card-session', 'card-model', 'card-changes', 'card-log'])
+  expect(await pane.find({ type: 'Text', text: '2 files' })).toBeDefined()
+  expect(await pane.find({ key: 'change-0-open' })).toMatchObject({ props: { label: 'src/search.ts', hotkey: '1' } })
+  expect(await pane.find({ key: 'change-1-open' })).toMatchObject({ props: { label: 'src/new.ts', hotkey: '2' } })
+  expect(await pane.find({ type: 'Text', text: '+3 -2' })).toBeDefined()
+  expect(await pane.find({ type: 'Text', text: '+1' })).toBeDefined()
+
+  // A row opens its file's diff in place of the cards, its changes with three lines around each.
+  await pane.press({ key: 'change-0-open' })
+  expect(await pane.find({ key: 'card-changes' })).toBeUndefined()
+  expect(await pane.find({ key: 'card-log' })).toBeUndefined()
+  expect(await pane.find({ type: 'Code' })).toMatchObject({
+    props: {
+      format: 'diff',
+      path: '/w/app/src/search.ts',
+      source: ['@@ -1,5 +1,5 @@', ' l1', '-l2', '+L2', ' l3', ' l4', ' l5', '@@ -12,7 +12,8 @@', ' l12', ' l13', ' l14', '-l15', '+L15', '+l15b', ' l16', ' l17', ' l18'].join('\n'),
+    },
+  })
+  expect(await pane.find({ type: 'Text', text: '1/2' })).toBeDefined()
+  expect(await pane.find({ key: 'diff-prev' })).toBeUndefined()
+  // The wheel scrolls the pane over a diff, the log not drawn.
+  await $.ui.scroll(wheel(35, 1))
+  expect(scrolled).toEqual([1])
+
+  // The whole file, its changed lines marked; then the next file, shown the same way.
+  await pane.press({ key: 'diff-whole' })
+  expect(await pane.find({ key: 'diff-whole' })).toMatchObject({ props: { label: 'changes only', hotkey: 'w' } })
+  expect((await pane.find({ type: 'Code' }))?.props.source).toMatch(/^@@ -1,20 \+1,21 @@\n l1\n-l2\n\+L2\n l3\n/)
+  await pane.press({ key: 'diff-next' })
+  expect(await pane.find({ type: 'Code' })).toMatchObject({ props: { path: '/w/app/src/new.ts', source: '@@ -0,0 +1 @@\n+export const b = 1' } })
+  expect(await pane.find({ type: 'Text', text: '2/2' })).toBeDefined()
+  expect(await pane.find({ key: 'diff-next' })).toBeUndefined()
+
+  // Back to the cards.
+  await pane.press({ key: 'diff-back' })
+  expect(await pane.find({ type: 'Code' })).toBeUndefined()
+  expect(await pane.find({ key: 'card-changes' })).toBeDefined()
+  await pane.unmount()
+})
+
+test("a later turn's first change starts the changes over; a turn that changed nothing, a call that failed and a file changed back leave none behind", async ($, on) => {
+  const ui = paneWorld()
+  const card = async (): Promise<string[]> => {
+    const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: PANE_PROPS, viewport: DOCKING })
+    const labels = (await pane.findAll({ type: 'Button' })).map(button => String(button.props.label)).filter(label => label.startsWith('src/'))
+
+    await pane.unmount()
+
+    return labels
+  }
+
+  ui.files['/w/app/src/a.ts'] = { text: 'a\n', mtimeMs: 0 }
+  editing(on, ui, ['/w/app/src/locked.ts'])
+  await $.session.start(START)
+  await $.turn.start({ text: 'first', turnId: 'turn_1' })
+  await $.tool.call({ tool: 'Edit', file_path: '/w/app/src/a.ts', old_string: 'a', new_string: 'b' } as never)
+  await $.turn.complete({ ...TURN, reason: 'answer' })
+  expect(await card()).toEqual(['src/a.ts'])
+
+  // A turn that changes nothing leaves the latest changes in view.
+  await $.turn.start({ text: 'look around', turnId: 'turn_2' })
+  await $.tool.call({ tool: 'Grep', pattern: 'b' } as never)
+  await $.turn.complete({ ...TURN, turnId: 'turn_2', reason: 'answer' })
+  expect(await card()).toEqual(['src/a.ts'])
+
+  // The next turn to change a file starts them over: a file it changes back is not listed, nor one it failed to change.
+  await $.turn.start({ text: 'third', turnId: 'turn_3' })
+  await $.tool.call({ tool: 'Write', file_path: '/w/app/src/c.ts', content: 'c\n' } as never)
+  await $.tool.call({ tool: 'Edit', file_path: '/w/app/src/a.ts', old_string: 'b', new_string: 'x' } as never)
+  await $.tool.call({ tool: 'Edit', file_path: '/w/app/src/a.ts', old_string: 'x', new_string: 'b' } as never)
+  await $.tool.call({ tool: 'Edit', file_path: '/w/app/src/locked.ts', old_string: 'x', new_string: 'y' } as never)
+  await $.turn.complete({ ...TURN, turnId: 'turn_3', reason: 'answer' })
+  expect(await card()).toEqual(['src/c.ts'])
+})
+
+test('a file whose text before the change was too large to keep is listed without counts, and its diff says so', async ($, on) => {
+  const ui = paneWorld()
+
+  // Past 512 KiB a text is not kept, so the fixture is not compared.
+  ui.files['/w/app/big.json'] = { text: `[${'0,'.repeat(300_000)}0]\n`, mtimeMs: 0 }
+  editing(on, ui)
+  await $.session.start(START)
+  await $.turn.start({ text: 'rewrite the fixture', turnId: 'turn_1' })
+  await $.tool.call({ tool: 'Write', file_path: '/w/app/big.json', content: '{}' } as never)
+  await $.turn.complete({ ...TURN, reason: 'answer' })
+
+  const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: PANE_PROPS, viewport: DOCKING })
+
+  expect(await pane.find({ key: 'change-0-open' })).toMatchObject({ props: { label: 'big.json' } })
+  expect(await pane.find({ type: 'Text', text: '?' })).toBeDefined()
+  await pane.press({ key: 'change-0-open' })
+  expect(await pane.find({ type: 'Text', text: 'too large to compare here' })).toBeDefined()
+  expect(await pane.find({ type: 'Code' })).toBeUndefined()
+  expect(await pane.find({ key: 'diff-whole' })).toBeUndefined()
+  await pane.unmount()
+})
+
+test('turned off, the changes card is left out', { options: { showChanges: false } }, async ($, on) => {
+  const ui = paneWorld()
+
+  editing(on, ui)
+  await $.session.start(START)
+  await $.turn.start({ text: 'first', turnId: 'turn_1' })
+  await $.tool.call({ tool: 'Write', file_path: '/w/app/src/c.ts', content: 'c\n' } as never)
+  await $.turn.complete({ ...TURN, reason: 'answer' })
+
+  const rows = await paneRows($)
+
+  expect(rows).toContain('log')
+  expect(rows).not.toContain('changes')
+})
+
 test('the logTurns and logSessions settings say how many turns a session keeps and how many sessions keep theirs', { options: { logTurns: 5, logSessions: 2 } }, async ($, on) => {
   const ui = paneWorld()
 
@@ -2248,13 +2417,13 @@ test('the helpers read HEAD, count hooks and format time, gauges, memory, server
 })
 
 test('the settings that order the pane, color its cards and draw its gauges are read leniently, an invalid value falling back', () => {
-  const ORDER = ['tasks', 'agents', 'context', 'recent', 'log']
+  const ORDER = ['tasks', 'agents', 'context', 'recent', 'changes', 'log']
 
   expect(paneOrderOf(undefined)).toEqual(ORDER)
   expect(paneOrderOf('')).toEqual(ORDER)
-  expect(paneOrderOf('tasks,agents,context,recent,log')).toEqual(ORDER)
-  expect(paneOrderOf('LOG, Tasks  bogus,log')).toEqual(['log', 'tasks', 'agents', 'context', 'recent'])
-  expect(paneOrderOf('recent,,context')).toEqual(['recent', 'context', 'tasks', 'agents', 'log'])
+  expect(paneOrderOf('tasks,agents,context,recent,changes,log')).toEqual(ORDER)
+  expect(paneOrderOf('LOG, Tasks  bogus,log')).toEqual(['log', 'tasks', 'agents', 'context', 'recent', 'changes'])
+  expect(paneOrderOf('recent,,context')).toEqual(['recent', 'context', 'tasks', 'agents', 'changes', 'log'])
   expect(colorOf('claude', 'subtle')).toBe('claude')
   expect(colorOf(' planmode ', 'subtle')).toBe('planMode')
   expect(colorOf('#A1B2C3', 'subtle')).toBe('#a1b2c3')
@@ -2306,4 +2475,45 @@ test("a kept file's name says whose log it is and which part; the oldest lines a
 
   // A sealed file with no newest one beside it is as old as it was written; this session's own past its sealed count goes.
   expect(sweepOf([file('me.json', 0), file('me.1.json', 0), file('me.2.json', 0), file('a.json', 5), file('b.1.json', 9), file('c.json', 9, 0), file('x.txt', 0)], 'me', 1, 10, 2, 0).map(one => one.name)).toEqual(['me.2.json', 'a.json', 'c.json'])
+})
+
+test('a diff is the shortest edit between the lines, in hunks with three lines around each change, drawn as Code reads them', () => {
+  // A final newline ends the last line; a CR before a newline is dropped.
+  expect(linesOf('')).toEqual([])
+  expect(linesOf('a\r\nb\n')).toEqual(['a', 'b'])
+  expect(linesOf('a\n\n')).toEqual(['a', ''])
+
+  const lines = lineDiff(['a', 'b', 'c', 'd'], ['a', 'x', 'c', 'd', 'e'])
+
+  expect(lines.map(line => `${line.kind}${line.text}`)).toEqual([' a', '-b', '+x', ' c', ' d', '+e'])
+  expect(diffCounts(lines)).toEqual({ added: 2, removed: 1 })
+  // Moved lines are found as the fewest removed and added.
+  expect(diffCounts(lineDiff(['a', 'b', 'c', 'd', 'e'], ['b', 'c', 'd', 'e', 'a']))).toEqual({ added: 1, removed: 1 })
+  // Past the limit, what lies between the common head and tail is replaced whole.
+  expect(lineDiff(['h', 'a', 'b', 't'], ['h', 'b', 'a', 't'], 1).map(line => `${line.kind}${line.text}`)).toEqual([' h', '-a', '-b', '+b', '+a', ' t'])
+
+  // Changes far apart make a hunk each; near, one. A hunk's header counts its lines, `,1` left out, an empty side at the line before.
+  const far = lineDiff(linesOf(TWENTY), linesOf(TWENTY.replace('l2\n', 'L2\n').replace('l19\n', '')))
+
+  expect(hunksOf(far, 3).map(hunk => [hunk.oldStart, hunk.newStart, hunk.lines.length])).toEqual([[1, 1, 6], [16, 16, 5]])
+  expect(hunksOf(far, 7)).toHaveLength(2)
+  expect(hunksOf(far, 8)).toHaveLength(1)
+  expect(hunksOf(far, Infinity)).toEqual([{ oldStart: 1, newStart: 1, lines: far }])
+  expect(unifiedOf(hunksOf(lineDiff([], ['only']), 3), 1_000)).toEqual({ text: '@@ -0,0 +1 @@\n+only', isCut: false })
+  expect(unifiedOf(hunksOf(lineDiff(['gone'], []), 3), 1_000)).toEqual({ text: '@@ -1 +0,0 @@\n-gone', isCut: false })
+  // A control character Code would refuse is drawn as U+FFFD; a tab stays.
+  expect(unifiedOf(hunksOf(lineDiff(['a'], ['b\u001b[0m\tc\r']), 3), 1_000).text).toBe('@@ -1 +1 @@\n-a\n+b�[0m\tc�')
+  // Past the characters given, the hunk is cut short, its header counting what is left.
+  expect(unifiedOf(hunksOf(lineDiff([], ['1234', '5678', '9abc']), 3), 52)).toEqual({ text: '@@ -0,0 +1,2 @@\n+1234\n+5678', isCut: true })
+
+  // A whole text too long to draw falls back to its changes.
+  expect(diffOf(TWENTY, TWENTY.replace('l2\n', 'L2\n'), true, 10_000)).toMatchObject({ isWhole: true, isCut: false, text: expect.stringMatching(/^@@ -1,20 \+1,20 @@\n/) })
+  expect(diffOf(TWENTY, TWENTY.replace('l2\n', 'L2\n'), true, 120)).toEqual({ isWhole: false, isCut: false, text: '@@ -1,5 +1,5 @@\n l1\n-l2\n+L2\n l3\n l4\n l5' })
+
+  // A path is named from the working directory, and cut from its start to keep the file's name.
+  expect(pathIn('/w/app/src/a.ts', '/w/app')).toBe('src/a.ts')
+  expect(pathIn('/w/application/a.ts', '/w/app')).toBe('/w/application/a.ts')
+  expect(pathIn('/w/app/a.ts', '/w/app/')).toBe('a.ts')
+  expect(clipStart('src/components/search/SearchBar.tsx', 16)).toBe('…h/SearchBar.tsx')
+  expect(clipStart('a.ts', 16)).toBe('a.ts')
 })
