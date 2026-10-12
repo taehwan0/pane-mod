@@ -1,0 +1,6 @@
+{
+  "name": "pane-mod",
+  "description": "pane-mod: Claude Code's HUD in a side pane",
+  "owner": { "name": "taehwan0" },
+  "plugins": [{ "name": "pane-mod", "source": "./" }]
+}

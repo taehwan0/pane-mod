@@ -1,0 +1,5 @@
+# Laid by Claude Code once it has loaded the mod
+.claude-plugin/types/
+# An optional local sprite and sound folder, never committed: sprites and sounds are your own (spriteDir, soundDir; see README)
+assets/
+.DS_Store

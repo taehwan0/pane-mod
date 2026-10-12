@@ -1,0 +1,214 @@
+{
+  "name": "pane-mod",
+  "version": "1.0.0",
+  "description": "Claude Code's HUD in a side pane (or a band above the prompt, or one line under it): the project, model and effort, usage and limits, context, tasks, subagents and a searchable work log, with a sprite and sounds of your own if you give it some",
+  "author": {
+    "name": "taehwan0"
+  },
+  "homepage": "https://github.com/taehwan0/pane-mod",
+  "repository": "https://github.com/taehwan0/pane-mod",
+  "license": "MIT",
+  "keywords": [
+    "mod",
+    "hud",
+    "pane",
+    "statusline",
+    "usage",
+    "subagents",
+    "sprite"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "animate": {
+      "type": "boolean",
+      "title": "Animate the sprite",
+      "description": "The sprite moves in every state: working while a turn runs and idle between turns. Turned off, each motion holds its first frame",
+      "default": true
+    },
+    "sprite": {
+      "type": "boolean",
+      "title": "Show the sprite",
+      "description": "Draws the sprite beside the HUD (terminals with the kitty graphics protocol, such as Ghostty, cmux or kitty); turned off, the HUD is text alone. With no frame found in the sprite folder the sprite is left out either way",
+      "default": true
+    },
+    "layout": {
+      "type": "string",
+      "title": "Where the HUD draws",
+      "description": "auto: a side pane docked beside the transcript where the screen docks one (the fullscreen view, wide enough), the band then holding nothing or one summary row (bandWithPane); the band alone elsewhere. band: the band only. pane: the pane always (above the prompt where the screen docks none). hint: no band and no pane, the HUD in one dim line after the hint under the prompt (/pane-mod still opens the pane). /pane-mod auto|band|pane|hint changes it for the session",
+      "options": [
+        "auto",
+        "band",
+        "pane",
+        "hint"
+      ],
+      "default": "auto"
+    },
+    "bandWithPane": {
+      "type": "string",
+      "title": "The band while the pane is shown",
+      "description": "off: nothing, the pane alone holds the HUD. line: one summary row (model, effort, context, 5h, status, subagents)",
+      "options": [
+        "off",
+        "line"
+      ],
+      "default": "off"
+    },
+    "alerts": {
+      "type": "boolean",
+      "title": "A line under approval dialogs",
+      "description": "Under an open approval dialog, a line saying since when it has waited and the limit warnings standing: the context or the 5h window at 80% or 90%, or the 5h window filling before it resets at the present pace. No toast and no sound: Claude Code's dialogs and warnings, and a terminal's own notifications, already call you",
+      "default": true
+    },
+    "sound": {
+      "type": "boolean",
+      "title": "Sound on state changes",
+      "description": "Plays one clip, picked at random, from <sound folder>/<state>/ as the sprite enters that state (working as a model turn starts, idle as it ends); a new clip stops the one still playing. A state with no clip plays nothing. macOS plays it with afplay; other systems play nothing",
+      "default": true
+    },
+    "agents": {
+      "type": "string",
+      "title": "Subagents in the HUD",
+      "description": "How the HUD shows subagents under its rows. list: one row each (type, task, time, tool calls). summary: one row of counts by state. off: nothing (Claude Code's own task list under the prompt still shows them)",
+      "options": [
+        "summary",
+        "list",
+        "off"
+      ],
+      "default": "summary"
+    },
+    "showSession": {
+      "type": "boolean",
+      "title": "Show the session section",
+      "description": "The session rows of the pane's first card (project, branch, mode, turns, style) and the band's first row. A name given with /rename stays on the card either way",
+      "default": true
+    },
+    "showNow": {
+      "type": "boolean",
+      "title": "Show the now section",
+      "description": "Whether a turn runs (a yellow badge with how long it has run) and the tool the main thread runs now: the now rows of the pane's first card and the band's status row",
+      "default": true
+    },
+    "showTasks": {
+      "type": "boolean",
+      "title": "Show the tasks section",
+      "description": "Claude's tasks (TaskCreate / TaskUpdate, or a TodoWrite list) in a card of the pane: those under way first, then waiting, then done",
+      "default": true
+    },
+    "showModel": {
+      "type": "boolean",
+      "title": "Show the model section",
+      "description": "The model and its effort gauge (and the cost while the totals are off): the first row of the pane's model card and the band's second row",
+      "default": true
+    },
+    "showUsage": {
+      "type": "boolean",
+      "title": "Show the usage section",
+      "description": "The context gauge, the 5h window with the pace, and the 7d window: the gauges of the pane's model card and the band's third row",
+      "default": true
+    },
+    "showTotals": {
+      "type": "boolean",
+      "title": "Show the totals section",
+      "description": "What the session has cost and used, summed over every turn (subagents' too): tokens in and out and the share the prompt cache served, in the pane's model card",
+      "default": true
+    },
+    "showContext": {
+      "type": "boolean",
+      "title": "Show the context section",
+      "description": "Memory files, hooks, tools, MCP, skills and commands: counts that seldom change, so off by default. The pane's context card and the band's fourth row",
+      "default": false
+    },
+    "showRecent": {
+      "type": "boolean",
+      "title": "Show the recent section",
+      "description": "The pane's recent card: the skills and the MCP tools the session used lately, the most recent first, five of each. Nothing shows while there is none",
+      "default": true
+    },
+    "showLog": {
+      "type": "boolean",
+      "title": "Show the log section",
+      "description": "The pane's log card: one line per finished turn, its detail (files, commands, tools, skills, MCP, subagents, errors, approvals, denials), and the file it opens",
+      "default": true
+    },
+    "logTurns": {
+      "type": "number",
+      "title": "Turns kept per session",
+      "description": "How many of a session's newest turns its log keeps (5 or more; 0 keeps every turn). The oldest go first",
+      "default": 50,
+      "min": 0
+    },
+    "logSessions": {
+      "type": "number",
+      "title": "Sessions whose logs are kept",
+      "description": "How many sessions' logs are kept, the most recently saved (1 or more; 0 keeps every session's)",
+      "default": 30,
+      "min": 0
+    },
+    "logDays": {
+      "type": "number",
+      "title": "Days a log is kept",
+      "description": "How many days a session's log is kept after its last save (1 or more; 0 keeps it however old)",
+      "default": 14,
+      "min": 0
+    },
+    "paneOrder": {
+      "type": "string",
+      "title": "Order of the pane's lower cards",
+      "description": "The cards under the pane's first card and model card, top to bottom: tasks, agents, context, recent and log, separated by commas or spaces. A name left out follows in the default order and an unknown name is ignored, so ordering never hides a card (the show settings do). The wheel pages the log only while log is last; elsewhere its buttons and the keys o and n still do",
+      "default": "tasks,agents,context,recent,log"
+    },
+    "sessionColor": {
+      "type": "string",
+      "title": "First card's color",
+      "description": "The border of the pane's first card and the session's name. auto: the color /color set, else a dim yellow. Otherwise a theme key (such as claude, subtle, success, warning, error, suggestion, permission, planMode, autoAccept) or a #rrggbb hex, used whatever /color says. An invalid value counts as auto",
+      "default": "auto"
+    },
+    "modelColor": {
+      "type": "string",
+      "title": "Model card's color",
+      "description": "The border of the pane's model card: a theme key (such as claude, subtle, success, warning, error, suggestion) or a #rrggbb hex. An invalid value counts as claude",
+      "default": "claude"
+    },
+    "cardColor": {
+      "type": "string",
+      "title": "Other cards' color",
+      "description": "The border of the pane's other cards (tasks, subagents, context, recent, log): a theme key (such as subtle, claude, success, warning, error, suggestion) or a #rrggbb hex. An invalid value counts as subtle",
+      "default": "subtle"
+    },
+    "barFilled": {
+      "type": "string",
+      "title": "Gauge's lit step",
+      "description": "The character every gauge (effort, context, 5h, 7d) draws its lit steps with: one character a cell wide, no emoji, wide character or space. An invalid value counts as the default",
+      "default": "▰"
+    },
+    "barEmpty": {
+      "type": "string",
+      "title": "Gauge's unlit step",
+      "description": "The character every gauge draws its unlit steps with: one character a cell wide, no emoji, wide character or space. An invalid value counts as the default",
+      "default": "▱"
+    },
+    "spriteSource": {
+      "type": "string",
+      "title": "How the sprite reaches the terminal",
+      "description": "auto: Ghostty and kitty read each frame's PNG file themselves; any other terminal is sent the PNG data. file: always the path. bytes: always the data (more output per frame, works wherever kitty graphics do)",
+      "options": [
+        "auto",
+        "file",
+        "bytes"
+      ],
+      "default": "auto"
+    },
+    "spriteDir": {
+      "type": "directory",
+      "title": "Your own sprite folder",
+      "description": "A folder holding idle/, working/ and complete/, each with that motion's PNG frames, played in name order (frame_001.png, frame_002.png, ...). Empty: assets/ in the plugin's folder, where none ships. A motion with no frame borrows idle's; with no frame anywhere the sprite is left out and its room goes to the text",
+      "default": ""
+    },
+    "soundDir": {
+      "type": "directory",
+      "title": "Your own sound folder",
+      "description": "A folder holding idle/ and working/, each with that state's clips (.caf, .wav, .aif, .aiff, .mp3, .m4a, .aac). Empty: assets/sounds/ in the plugin's folder, where none ships. A state with no clip plays nothing",
+      "default": ""
+    }
+  }
+}
