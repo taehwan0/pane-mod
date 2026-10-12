@@ -14,7 +14,7 @@ pane-mod는 Claude Code의 **mod**(함수형 hook 플러그인)입니다. 오른
 
 설치는 사용자의 Claude Code 설정을 바꿉니다. 이 문서를 읽었다는 이유만으로 설치하지 말고, 사용자가 설치를 요청했을 때만 아래 순서를 따릅니다. 각 설정의 자세한 설명은 [INSTALL.md](INSTALL.md) 2장에 있습니다.
 
-1. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.0.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
+1. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.1.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
 2. **Claude Code를 확인합니다.** `claude --version`을 실행합니다. 2.1.292 이상이어야 하며, 버전이 낮으면 `claude update`를 제안합니다. `claude` 명령이 없으면 여기서 멈추고 <https://claude.com/claude-code>를 안내합니다. Claude Code를 대신 설치하지 않습니다.
 3. **이미 설치되어 있는지 확인합니다.** `claude plugin list`에 `pane-mod@pane-mod`가 있으면 다시 설치하지 않습니다. 상태가 disabled이면 한 줄로 알린 뒤 `claude plugin enable pane-mod@pane-mod`를 실행합니다. 설정만 바꾸려는 경우에는 아래 "설정 변경을 요청받았을 때"를 따릅니다.
 4. **설정을 고르게 합니다.** 아래 세 묶음을 기본값과 함께 한 번에 보여 주고, 바꿀 항목만 답받습니다. 노출할 항목(첫 번째 묶음)은 반드시 묻습니다. 사용자가 답하지 않은 항목은 기본값을 씁니다.
@@ -137,7 +137,7 @@ mod를 이해하는 데 필요한 개념은 다음과 같습니다.
 ```text
 pane-mod/
 ├── .claude-plugin/
-│   ├── plugin.json          # 이름, 버전(1.0.0), userConfig 29개, types 경로
+│   ├── plugin.json          # 이름, 버전(1.1.0), userConfig 29개, types 경로
 │   ├── marketplace.json     # 이 폴더를 마켓플레이스로 등록합니다 (source: "./").
 │   └── types/               # Claude Code가 mod를 로드할 때 만드는 타입 선언 (git 제외)
 ├── hooks/

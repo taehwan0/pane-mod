@@ -1,6 +1,6 @@
 {
   "name": "pane-mod",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Claude Code's HUD in a side pane (or a band above the prompt, or one line under it): the project, model and effort, usage and limits, context, tasks, subagents and a searchable work log, with a sprite and sounds of your own if you give it some",
   "author": {
     "name": "taehwan0"
