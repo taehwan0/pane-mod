@@ -153,6 +153,7 @@ pane-mod/
 ├── README.md                # 기능, 설정, 레이아웃, 알림, 표시 항목, 이 mod가 컴퓨터에서 하는 일 (한국어, 기준 문서)
 ├── README.en.md             # README의 영어판
 ├── INSTALL.md               # 설치 절차, 문제 해결, AI가 설치를 맡을 때의 규칙
+├── CHANGELOG.md             # 버전별 변경 기록
 ├── AGENTS.md                # 이 문서
 └── LICENSE                  # MIT
 ```
@@ -292,12 +293,13 @@ mod는 아래 구조로 asset을 찾습니다. 스프라이트 폴더는 `sprite
 
 ## 작업 규칙
 
-- **언어**: README, INSTALL, `docs/`, 이 문서는 한국어 합니다체로 씁니다. README.en.md는 README의 영어판이며, README를 고치면 영어판의 같은 내용도 함께 고칩니다. 코드의 식별자와 주석(JSDoc 포함)은 영어로 쓰고, 기존 주석의 문체를 따릅니다. 커밋 메시지는 `feat: ...`처럼 Conventional Commits 접두어 뒤에 한국어로 씁니다.
+- **언어**: README, INSTALL, CHANGELOG, `docs/`, 이 문서는 한국어 합니다체로 씁니다. README.en.md는 README의 영어판이며, README를 고치면 영어판의 같은 내용도 함께 고칩니다. 코드의 식별자와 주석(JSDoc 포함)은 영어로 쓰고, 기존 주석의 문체를 따릅니다. 커밋 메시지는 `feat: ...`처럼 Conventional Commits 접두어 뒤에 한국어로 씁니다.
 - **pane의 마지막 카드**: 첫 카드와 모델 카드 아래의 카드는 `paneOrder`(`paneOrderOf`가 읽은 순서)대로 그리며, 기본 순서에서는 로그 카드가 pane 트리의 맨 끝에 옵니다. `ui.scroll` hook은 pane 맨 아래의 `logRowsOf`행(테두리 두 줄, 제목, 검색칸, 줄 또는 찾지 못했다는 행, 상세, 버튼 행)을 로그 영역으로 보므로, 로그 카드의 행 구성을 바꾸면 `logRowsOf`도 함께 고칩니다. 다른 카드는 폭에 따라 줄을 바꿔서 높이를 정확히 알 수 없으므로, `paneOrder`의 마지막이 `log`가 아니면 `logHeight`를 0으로 두어 휠은 언제나 pane을 스크롤하고, 로그는 `▲ older` / `▼ newer` 버튼과 `o` / `n` 키로만 넘깁니다. 이 규칙을 유지하려면 새 카드를 추가할 때 `PANE_CARDS`의 기본 순서에서 `log`보다 앞에 넣습니다. diff를 보는 동안에는 로그 카드를 그리지 않으므로 `logHeight`를 0으로 둡니다.
 - **`$`를 쓰는 코드와 순수 함수의 분리**: `$`가 필요 없는 계산은 `hooks/format.ts`에서 export하고, `tests/`에서 직접 단위 테스트합니다.
 - **상태**: 다시 로드한 뒤에도 남아야 하는 값은 `$.state`(세션 동안)나 `$.store`(세션 사이)에 둡니다. 다만 작업 로그처럼 세션 사이에 쌓이는 큰 데이터는 `$.store`의 전체 용량(4 MiB)을 넘을 수 있으므로, 데이터 폴더의 파일(`sessions/`, README "로그 보관")에 둡니다. `$.state`에 키를 추가하면 `types/index.d.ts`의 `PluginState['pane-mod']`에도 선언합니다. 계약에 없는 키는 `validate`가 거부합니다.
 - **설정(`userConfig`)을 추가하거나 바꿀 때**: `plugin.json`, `register`의 `options` 처리, README의 "설정" 표, INSTALL.md 2장의 묶음별 표와 항목 수(지금은 "스물아홉 항목"), 이 문서의 "설치를 요청받았을 때" 4단계 표와 "설정 변경을 요청받았을 때" 1단계 표를 함께 고칩니다. 새 항목은 노출할 항목, 스프라이트와 소리, 알림 중 알맞은 묶음에 넣습니다.
-- **버전을 올릴 때**: `plugin.json`의 `version`, INSTALL.md의 버전 표기(4장의 출력 예시, 8장의 안내 문구), 이 문서의 버전 표기(구조 트리, "설치를 요청받았을 때" 1단계)를 함께 고칩니다.
+- **버전을 올릴 때**: 기능을 추가하면 minor 버전을, 문제만 고치면 patch 버전을 올립니다. `plugin.json`의 `version`, INSTALL.md의 버전 표기(4장의 출력 예시, 8장의 안내 문구), 이 문서의 버전 표기(구조 트리, "설치를 요청받았을 때" 1단계)를 함께 고칩니다. CHANGELOG.md 맨 위에는 그 버전의 절을 추가하고, 직전 버전의 태그 뒤에 들어간 변경을 추가, 변경, 수정, 문서로 나눠 적습니다.
+- **브랜치와 배포**: `main`에 직접 커밋하거나 push하지 않습니다. `develop`에 커밋하고 push한 뒤, `develop`에서 `main`으로 PR을 엽니다. 버전 태그는 PR이 merge된 뒤 `main`에서 `claude plugin tag . -m "pane-mod %s"`로 만듭니다(예: `pane-mod--v1.1.0`).
 - **동작이나 외부 접근이 바뀔 때**: README에서 해당하는 절(레이아웃, 알림, 스프라이트 동작, 표시 항목과 출처, 이 mod가 컴퓨터에서 하는 일)을 고칩니다.
 - **사용자 설정 파일**: mod와 에이전트 모두 `~/.claude/settings.json`을 고치지 않습니다. statusLine 정리는 사용자가 동의했을 때만 진행합니다(INSTALL.md 5장).
 - **설치를 요청받았을 때**: 이 문서의 "설치를 요청받았을 때" 절차를 따릅니다. INSTALL.md 8장은 같은 규칙을 사람이 읽기 쉽게 요약한 것이므로, 절차를 바꾸면 두 곳을 함께 고칩니다.

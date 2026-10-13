@@ -282,6 +282,7 @@ Usage, turns and subagents are read every 2 seconds; branch, hooks, tools and md
 | `docs/sprite-states.md` | States that could be told apart, sprites needed, how to make them (Korean) |
 | `docs/demo.gif` | The demo at the top |
 | `INSTALL.md`, `AGENTS.md` | Installing, and the rules for AI coding agents (Korean) |
+| `CHANGELOG.md` | What changed in each version (Korean) |
 | `LICENSE` | MIT |
 
 ## Development

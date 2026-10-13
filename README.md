@@ -419,6 +419,7 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 | `assets/sounds/<상태>/` | 선택 사항인 상태별 소리 폴더(git 제외, 저장소에는 없음). 보통은 `soundDir`로 다른 폴더를 지정합니다. |
 | `README.en.md` | 이 문서의 영어판 |
 | `INSTALL.md` | 설치 절차 |
+| `CHANGELOG.md` | 버전별 변경 기록 |
 | `AGENTS.md` | AI 코딩 에이전트를 위한 지침(구조, 개발 절차, 설치 절차) |
 | `docs/sprite-states.md` | 구분할 수 있는 상태와 필요한 스프라이트, 제작 규격 |
 | `docs/demo.gif` | README 맨 위의 데모 화면 |
