@@ -89,7 +89,7 @@ Pane (docked on the right, cards in rounded borders):
 
 The commands are in "Quick start"; [INSTALL.md](INSTALL.md) (Korean) has the settings to choose, how to check, troubleshooting, and the rules for an AI that installs it. This repository is itself a marketplace (`.claude-plugin/marketplace.json`).
 
-With a clone, you can add its folder as the marketplace instead (`claude plugin marketplace add ~/work/pane-mod`); then `/reload-plugins` in a running session reads your edits at once. To try it for one session without installing:
+With a clone, you can add its folder as the marketplace instead (`claude plugin marketplace add ~/work/pane-mod`); then `/reload-plugins` in a running session reads your edits at once. To try it for one session without installing (with pane-mod installed already, this session runs on the defaults, not the settings you chose; see "설치하지 않고 한 세션에서만 써 보기" in INSTALL.md):
 
 ```
 claude --plugin-dir ~/work/pane-mod

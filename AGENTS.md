@@ -81,7 +81,7 @@ pane-mod의 설정은 모두 `plugin.json`의 `userConfig`에 있습니다. 설�
 
 - **사용자가 직접 바꾸고 싶어 할 때**: 입력창에 `/plugin configure pane-mod@pane-mod`(전체 설정 화면)나 `/config`(pane-mod 행)를 입력하라고 안내합니다. 이 경로로 바꾸면 Claude Code가 mod를 새 값으로 다시 로드합니다.
 - **이번 세션에서만 레이아웃을 바꾸고 싶을 때**: `/pane-mod auto`, `/pane-mod band`, `/pane-mod pane`, `/pane-mod hint`를 안내합니다. 이 명령은 설정을 저장하지 않습니다.
-- **`--plugin-dir`로 로드한 작업 사본일 때**: 설치된 플러그인이 아니므로 `/config`의 pane-mod 행에서 바꾸도록 안내합니다.
+- **`--plugin-dir`로 로드한 작업 사본일 때**: 작업 사본은 설치본의 설정을 쓰지 않습니다. 아래 "로드와 다시 읽기"에 설명한 작업 사본용 설정 파일에서 값을 고치고, Claude Code를 다시 시작하도록 안내합니다.
 
 어느 경우에도 `~/.claude/settings.json`을 손으로 고치지 않습니다.
 
@@ -186,7 +186,18 @@ HUD에 표시하는 값은 다음 순서로 갱신됩니다. `session.start`는 
 
 - 작업 사본은 `claude --plugin-dir .`로 로드합니다. 이렇게 로드하면 파일을 저장할 때마다 hooks module을 다시 읽습니다. Claude가 파일을 고쳤다면 그 턴이 끝날 때 다시 읽습니다. 다시 읽으면 `register`와 `session.start`가 다시 실행되고 모듈 변수는 초기화됩니다.
 - 설치한 플러그인은 버전별로 캐시된 사본으로 실행되므로, 개발할 때는 설치본이 아니라 `--plugin-dir`로 작업 사본을 로드합니다. 설치본에 반영하는 방법은 INSTALL.md 6장을 따릅니다.
-- 이름이 같은 플러그인은 하나만 로드됩니다(`another plugin of that name loads first`). 설치된 pane-mod가 있다면 개발하는 동안 `claude plugin disable pane-mod@pane-mod`로 잠시 꺼 둡니다.
+- 설치된 pane-mod는 끄지 않습니다. `--plugin-dir`로 로드한 사본은 그 세션에서만 이름이 같은 설치본을 대신하고, 다른 세션은 계속 설치본으로 동작합니다([Name conflicts](https://code.claude.com/docs/en/plugins/loading#name-conflicts)). `claude plugin disable`은 user 범위의 설정을 바꾸므로 다른 세션의 HUD까지 사라지게 합니다. `another plugin of that name loads first`는 이름이 같은 플러그인을 서로 다른 마켓플레이스에서 둘 다 설치했을 때의 메시지이며, `--plugin-dir`와는 관계가 없습니다.
+- 작업 사본은 `pane-mod@inline`이라는 별도의 ID로 실행되므로, 설치본의 설정(`pluginConfigs["pane-mod@pane-mod"]`)을 읽지 않고 모든 항목을 기본값으로 실행합니다. 그런데 로그 폴더(`~/.claude/plugins/data/pane-mod-pane-mod`)는 설치본과 같습니다. 그래서 사용자가 로그 보관 한도를 바꿔 두었거나 제한 없이 보관하고 있다면, 작업 사본이 기본 한도(50턴, 30세션, 14일)에 따라 오래된 로그를 지울 수 있습니다.
+- 이를 막으려면 작업 사본용 설정 파일을 저장소 밖에 만들고 `--settings`로 넘겨서 실행합니다. `~/.claude/settings.json`의 `pluginConfigs["pane-mod@pane-mod"].options`를 읽어서(이 파일은 읽기만 합니다) 그 값을 그대로 `pane-mod@inline` 아래에 옮겨 적습니다. 별도의 파일이므로 사용자 설정을 고치는 일이 아니며, 개인 경로가 들어가므로 저장소에는 두지 않습니다. 설치본의 설정을 바꾼 뒤에는 이 파일도 다시 만듭니다.
+
+  ```json
+  { "pluginConfigs": { "pane-mod@inline": { "options": { "logTurns": 0, "logSessions": 0, "logDays": 0, "spriteDir": "/Users/me/.config/pane-mod/sprites" } } } }
+  ```
+
+  ```sh
+  claude --plugin-dir . --settings ~/.config/pane-mod/dev-settings.json
+  ```
+
 - 이 저장소를 고칠 때는 다른 폴더에 사본을 만들어 작업하지 말고, 이 저장소의 파일을 직접 고칩니다. mod를 새로 만드는 스킬이나 도구가 별도의 작업 폴더를 쓰더라도 마찬가지입니다.
 
 ### 검사

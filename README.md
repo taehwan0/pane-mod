@@ -89,7 +89,7 @@ pane (오른쪽에 붙을 때, 카드는 둥근 테두리):
 
 설치 명령은 위의 "빠른 시작"에 있고, 설치 중에 정할 설정과 확인 방법, 문제 해결은 [INSTALL.md](INSTALL.md)에 있습니다. 이 저장소 자체가 마켓플레이스(`.claude-plugin/marketplace.json`)입니다.
 
-저장소를 clone했다면 그 폴더를 마켓플레이스로 등록할 수도 있습니다(`claude plugin marketplace add ~/work/pane-mod`). 이 경우 파일을 고친 뒤 실행 중인 세션에서 `/reload-plugins`를 입력하면 바로 다시 읽습니다. 설치하지 않고 한 세션에서만 써 보려면 다음과 같이 실행합니다.
+저장소를 clone했다면 그 폴더를 마켓플레이스로 등록할 수도 있습니다(`claude plugin marketplace add ~/work/pane-mod`). 이 경우 파일을 고친 뒤 실행 중인 세션에서 `/reload-plugins`를 입력하면 바로 다시 읽습니다. 설치하지 않고 한 세션에서만 써 보려면 다음과 같이 실행합니다. 이미 설치했다면 이 세션은 설치할 때 고른 설정 대신 기본값으로 실행되므로, 먼저 INSTALL.md의 "설치하지 않고 한 세션에서만 써 보기"를 확인하세요.
 
 ```
 claude --plugin-dir ~/work/pane-mod

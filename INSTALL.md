@@ -116,10 +116,22 @@ claude plugin install pane-mod@pane-mod \
 
 ### 설치하지 않고 한 세션에서만 써 보기
 
-저장소를 clone한 뒤 그 폴더를 지정해서 실행합니다. 같은 이름의 플러그인은 하나만 로드되므로, pane-mod가 이미 설치되어 있다면 `claude plugin disable pane-mod@pane-mod`로 잠시 꺼 둡니다.
+저장소를 clone한 뒤 그 폴더를 지정해서 실행합니다.
 
 ```
 claude --plugin-dir ~/work/pane-mod
+```
+
+pane-mod가 이미 설치되어 있어도 끌 필요는 없습니다. 이렇게 실행한 세션에서는 clone한 사본이 설치본을 대신하고, 다른 세션은 계속 설치본으로 동작합니다.
+
+다만 clone한 사본은 설치본과 다른 이름(`pane-mod@inline`)으로 실행되므로, 설치할 때 고른 설정을 쓰지 않고 모든 항목을 기본값으로 실행합니다. 로그 폴더는 설치본과 같기 때문에, 로그 보관 한도를 바꿔 두었거나 제한 없이 보관하고 있다면 기본 한도(50턴, 30세션, 14일)에 따라 오래된 로그가 지워질 수 있습니다. 설치본과 같은 설정으로 실행하려면 `~/.claude/settings.json`의 `pluginConfigs["pane-mod@pane-mod"].options` 값을 `pane-mod@inline` 아래에 옮겨 적은 파일을 따로 만들고, `--settings`로 넘깁니다. `~/.claude/settings.json`은 고치지 않습니다.
+
+```json
+{ "pluginConfigs": { "pane-mod@inline": { "options": { "logTurns": 0, "logSessions": 0, "logDays": 0 } } } }
+```
+
+```
+claude --plugin-dir ~/work/pane-mod --settings ~/.config/pane-mod/dev-settings.json
 ```
 
 ## 4. 설치 확인
