@@ -1,9 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { AgentInfo, AudioClip, Elements, EngineInterface, FsEntry, ImageSource, Register, RenderElement, RenderSurface, Timer } from 'claude-code'
 
-import type { AgentRow, AgentState, Alert, AlertKind, LogAgent, LogCall, LogEntry, LogError, Outcome, SectionName, SessionColor, Snapshot, TaskItem, Totals } from '../types'
+import type { AgentRow, AgentState, Alert, AlertKind, ChangeRow, LogAgent, LogCall, LogEntry, LogError, Outcome, SectionName, SessionColor, Snapshot, TaskItem, Totals } from '../types'
 
-import { addUsage, agentCounts, agentLine, audioMime, bar, BAR_GLYPHS, barGlyphOf, baseName, cacheHitOf, callsLine, cleanOf, clip, clockOf, colorOf, colorSaid, countHooks, countTool, dateOf, doneOf, duration, effortGauge, effortGuess, effortLevelOf, effortSaid, effortTint, elapsed, errorLine, errorText, folderOf, frameAt, framesFor, gitDirOf, headName, hintTail, isEnded, isWorktreeDir, limitOf, limitSetting, LOG_CAPS, logFrom, logMarkdown, logMatches, logWheel, markReached, mcpNameOf, mcpServersOf, memoryOf, minutesToFull, modelBase, modelName, nextFrame, NO_FRAMES, NO_TOTALS, oneLine, OUTCOME_WORDS, PANE_CARDS, paneOrderOf, parentOf, partText, promptOf, recentOf, renameSaid, sealedOf, sessionColorOf, soundFiles, spriteFrames, stampOf, standing, STATE_ORDER, stateOf, sweepOf, targetOf, tasksFrom, tasksInOrder, tasksOfTodos, tint, tokensShort, toolKind, toolsLine, toolsOf, totalsFrom, updateTask, withOnce, withoutFrame, wrapCells } from './format'
+import { addUsage, agentCounts, agentLine, audioMime, bar, BAR_GLYPHS, barGlyphOf, baseName, cacheHitOf, callsLine, cellsOf, cleanOf, clip, clipStart, clockOf, colorOf, colorSaid, countHooks, countTool, dateOf, diffCounts, diffOf, doneOf, duration, effortGauge, effortGuess, effortLevelOf, effortSaid, effortTint, elapsed, errorLine, errorText, folderOf, frameAt, framesFor, gitDirOf, headName, hintTail, isEnded, isOwnData, isWorktreeDir, limitOf, limitSetting, lineDiff, linesOf, LOG_CAPS, logFrom, logMarkdown, logMatches, logWheel, markReached, mcpNameOf, mcpServersOf, memoryOf, minutesToFull, modelBase, modelName, nextFrame, NO_FRAMES, NO_TOTALS, oneLine, OUTCOME_WORDS, PANE_CARDS, paneOrderOf, parentOf, partText, pathIn, promptOf, recentOf, renameSaid, sealedOf, sessionColorOf, soundFiles, spriteFrames, stampOf, standing, STATE_ORDER, stateOf, sweepOf, targetOf, tasksFrom, tasksInOrder, tasksOfTodos, tint, tokensShort, toolKind, toolsLine, toolsOf, totalsFrom, updateTask, withOnce, withoutFrame, wrapCells } from './format'
 import type { BarGlyphs, EffortLevel, Frames, Motion, PaneCard } from './format'
 
 /** The GIF's own pace: 25 frames every 2 seconds. */
@@ -43,6 +43,16 @@ const LOG_KEPT_MIN = 5
 const LOG_ROWS = 5
 /** How many skills, and how many MCP tools, the pane's recent card lists. */
 const RECENT_ROWS = 5
+/** The changed files the pane's changes card lists before it counts the rest, and the most it follows at once. */
+const CHANGE_ROWS = 8
+const CHANGES_KEPT = 50
+/** A changed file's text past this many characters is not kept: the file is listed, but not compared. */
+const CHANGE_TEXT_MAX = 512 * 1024
+/** What one diff draws at most: `Code` draws 100000 characters in one drawing, and the cards around it take some. */
+const DIFF_CHARS = 80_000
+/** The changes card, and the card over a diff, which the pane scrolls to. */
+const CHANGES_KEY = 'card-changes'
+const DIFF_KEY = 'card-diff'
 /**
  * The kept logs: files under the plugin's data folder, `<id>.json` per session
  * with its newest lines (LOG_PART at most) and what else is kept for it. A log
@@ -73,8 +83,9 @@ const LOG_FIND_KEY = 'log-find'
 /**
  * Where the logs are kept (KEPT_FOLDER) and written to be read (`logs`): the
  * plugins' data folder as Claude Code names this plugin's
- * (`<plugin>-<marketplace>`), which an uninstall clears; `CLAUDE_PLUGIN_DATA`
- * names it where the engine says.
+ * (`<plugin>-<marketplace>`), which an uninstall clears. `CLAUDE_PLUGIN_DATA`
+ * names it where it names a folder of this plugin's (`isOwnData`); another
+ * plugin's is passed over.
  */
 const DATA_FOLDER = 'plugins/data/pane-mod-pane-mod'
 /** What opens a written file with the app the system picks: macOS's, then the freedesktop one. */
@@ -123,6 +134,7 @@ const frame = atom({ plugin: 'pane-mod', key: 'frame' } as const, 0)
 const logOffset = atom({ plugin: 'pane-mod', key: 'logOffset' } as const, 0)
 const logOpen = atom({ plugin: 'pane-mod', key: 'logOpen' } as const, null)
 const logQuery = atom({ plugin: 'pane-mod', key: 'logQuery' } as const, '')
+const diffOpen = atom({ plugin: 'pane-mod', key: 'diffOpen' } as const, null)
 
 type Engine = EngineInterface
 type Slow = Pick<Snapshot, 'project' | 'branch' | 'isWorktree' | 'memory' | 'hooks' | 'tools'>
@@ -138,6 +150,9 @@ const STATE_MARK: Record<AgentState, { mark: string; color?: string }> = {
   done: { mark: '✓', color: '#66bb6a' },
   failed: { mark: '✗', color: '#ef5350' },
 }
+/** The lines a diff adds, and those it removes, as the changes card counts them. */
+const ADDED = '#66bb6a'
+const REMOVED = '#ef5350'
 /** How the subagents are shown under the rows: one row each, one row of counts, or not at all. */
 type AgentsShown = 'list' | 'summary' | 'off'
 type Layout = 'auto' | 'band' | 'pane' | 'hint'
@@ -259,7 +274,7 @@ let paceToldAt = Number.NEGATIVE_INFINITY
 let tasks: TaskItem[] = []
 let totals: Totals = NO_TOTALS
 /** The sections the settings show (the pane's, and the band's rows they share). */
-let sections: Readonly<Record<SectionName, boolean>> = { session: true, now: true, tasks: true, model: true, usage: true, totals: true, context: false, recent: true, log: true }
+let sections: Readonly<Record<SectionName, boolean>> = { session: true, now: true, tasks: true, model: true, usage: true, totals: true, context: false, recent: true, changes: true, log: true }
 /** The pane's cards under its first two, in the order the `paneOrder` setting puts them. */
 let paneOrder: readonly PaneCard[] = PANE_CARDS
 /**
@@ -277,6 +292,19 @@ let barGlyphs: BarGlyphs = BAR_GLYPHS
  */
 let paneOffset = 0
 let logHeight = 0
+/**
+ * A file the latest turn that changed any changed: its path, the name it is
+ * shown by, its text before that turn changed it and as it was last written
+ * (null where it was too large to keep), the lines added and removed between
+ * them, and which change of the session was its last.
+ */
+type Change = { path: string; name: string; before: string | null; after: string | null; added: number | null; removed: number | null; version: number }
+/** The changed files by path, in the order first changed; the turn they belong to (none before any); and the changes so far. */
+const changes = new Map<string, Change>()
+let changesOf: Tally | null = null
+let changeCount = 0
+/** The diff last drawn, kept so that a redraw does not work it out again. */
+let diffDrawn: { key: string; diff: ReturnType<typeof diffOf> } | null = null
 /** The tool calls under way by id, with their tool and loop, so an approval asked can be told which call it holds. */
 const inFlight = new Map<string, { tool: string; agentId: string | undefined }>()
 
@@ -390,6 +418,7 @@ const gatherFast = async ($: Engine): Promise<Fast> => {
     forecast: toFull !== null && (toReset === null || toFull < toReset) ? toFull : null,
     log: workLog.map(entry => ({ ...entry, at: stampOf(entry.endedAt, now) })),
     recent: recentOf(workLog, tally, RECENT_ROWS),
+    changes: [...changes.values()].map(({ path, name, added, removed }): ChangeRow => ({ path, name, added, removed })),
     tasks: tasksInOrder(tasks),
     totals,
     model,
@@ -496,6 +525,56 @@ const noteCall = (calls: LogCall[] | undefined, tool: string, input: unknown): v
   calls.push({ tool: cleanOf(tool, LOG_CAPS.name), target: target === null ? null : cleanOf(target, LOG_CAPS.target) })
 }
 
+/**
+ * Follows a file an Edit or a Write changed, whichever loop made the call: its
+ * text before the latest turn that changed any (the first call's
+ * `originalFile`, empty for a file the Write created) and as it stands after
+ * the call, read back, so that a file changed many times makes one diff. A
+ * turn's first change starts the list over; a file changed back to how it was
+ * leaves it. True where the list changed.
+ */
+const noteChange = async ($: Engine, tool: string, args: Readonly<Record<string, unknown>>, called: unknown): Promise<boolean> => {
+  const path = args.file_path
+  const { result, isError, deny } = (typeof called === 'object' && called !== null ? called : {}) as { result?: unknown; isError?: boolean; deny?: string }
+  const record = (typeof result === 'object' && result !== null ? result : {}) as Readonly<Record<string, unknown>>
+
+  // A tool's own record says what the file held before; a call refused, failed or answered by a hook has none.
+  if ((tool !== 'Edit' && tool !== 'Write') || typeof path !== 'string' || deny !== undefined || isError === true || !('originalFile' in record)) return false
+  const owner = tally ?? changesOf
+
+  if (owner !== changesOf) {
+    changes.clear()
+    changesOf = owner
+  }
+  const known = changes.get(path)
+
+  if (known === undefined && changes.size >= CHANGES_KEPT) return false
+  const original = record.originalFile
+  const kept = (text: string | null): string | null => (text !== null && text.length <= CHANGE_TEXT_MAX ? text : null)
+  const before = known !== undefined ? known.before : kept(tool === 'Write' && record.type === 'create' ? '' : typeof original === 'string' ? original : null)
+  const [after, cwd] = await Promise.all([$.fs.read(path).then(text => kept(String(text)), () => null), $.session.cwd().catch(() => '')])
+  const counts = before === null || after === null ? null : diffCounts(lineDiff(linesOf(before), linesOf(after)))
+
+  if (counts !== null && counts.added === 0 && counts.removed === 0) return changes.delete(path)
+  changeCount += 1
+  changes.set(path, { path, name: pathIn(path, cwd), before, after, added: counts?.added ?? null, removed: counts?.removed ?? null, version: changeCount })
+
+  return true
+}
+
+/** The diff a changed file is drawn with, worked out once for each version of it and each way of showing it; null where it was too large to compare. */
+const diffShown = (change: Change, isWhole: boolean): ReturnType<typeof diffOf> | null => {
+  if (change.before === null || change.after === null) return null
+  const key = `${change.version}:${isWhole}`
+
+  if (diffDrawn?.key === key) return diffDrawn.diff
+  const diff = diffOf(change.before, change.after, isWhole, DIFF_CHARS)
+
+  diffDrawn = { key, diff }
+
+  return diff
+}
+
 type Usage4 = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }
 
 /**
@@ -556,6 +635,9 @@ const syncLog = async ($: Engine): Promise<void> => {
   if (id === logSession) return
   logSession = id
   sealedTexts.clear()
+  // Another session in view (`/clear`, one taken up) has changed nothing yet.
+  changes.clear()
+  changesOf = null
   const folder = await keptFolder($)
   const head = folder === null ? undefined : await readKept($, `${folder}/${id}.json`)
   const record = (typeof head === 'object' && head !== null ? head : {}) as { color?: unknown; tasks?: unknown; totals?: unknown; sealed?: unknown }
@@ -678,6 +760,18 @@ const copyPrompt = async ($: Engine, text: string, surface: RenderSurface): Prom
   await $.ui.copy({ text, surface })
 }
 
+/** Shows a changed file's diff over the whole pane, its changes alone or its whole text, from the top. */
+const openDiff = async ($: Engine, path: string, isWhole: boolean): Promise<void> => {
+  await update($, diffOpen, () => ({ path, isWhole }))
+  await $.ui.scroll({ in: PANE, to: 'start' }).catch(() => undefined)
+}
+
+/** Goes back from a diff to the cards, the changes card in view. */
+const closeDiff = async ($: Engine): Promise<void> => {
+  await update($, diffOpen, () => null)
+  await $.ui.scroll({ in: PANE, to: { key: CHANGES_KEY } }).catch(() => undefined)
+}
+
 /** The plugin's data folder, which the logs are kept in and written to, or null where no variable says where home is. */
 const dataFolder = async ($: Engine): Promise<string | null> => {
   const [data, config, home] = await Promise.all([
@@ -686,7 +780,7 @@ const dataFolder = async ($: Engine): Promise<string | null> => {
     $.env.get('HOME').catch(() => undefined),
   ])
 
-  if ((data ?? '') !== '') return data ?? null
+  if (data !== undefined && isOwnData(data)) return data
   const base = (config ?? '') !== '' ? config : (home ?? '') !== '' ? `${home}/.claude` : null
 
   return base === null || base === undefined ? null : `${base}/${DATA_FOLDER}`
@@ -1090,6 +1184,7 @@ export const register: Register = (on, options) => {
     totals: options.showTotals !== false,
     context: options.showContext === true,
     recent: options.showRecent !== false,
+    changes: options.showChanges !== false,
     log: options.showLog !== false,
   }
   // A mistyped order, color or step falls back to its default, so no setting can get a drawing refused.
@@ -1249,9 +1344,12 @@ export const register: Register = (on, options) => {
 
     // A skill run or an MCP tool called counts for the turn under way, whichever loop calls it.
     noteUse(e.tool, args)
-    // A task call that went through moves the task list, whichever loop made it.
-    const done = <T,>(result: T): T => {
-      if (noteTaskCall(e.tool, args)) void refresh($).catch(() => undefined)
+    // A task call that went through moves the task list, and a file changed joins the changed files, whichever loop
+    // made it.
+    const done = async <T,>(result: T): Promise<T> => {
+      const isChanged = await noteChange($, e.tool, args, result).catch(() => false)
+
+      if (noteTaskCall(e.tool, args) || isChanged) void refresh($).catch(() => undefined)
 
       return result
     }
@@ -1260,7 +1358,7 @@ export const register: Register = (on, options) => {
       if (e.agentId !== undefined) {
         await noteTool($, e.agentId, e.tool).catch(() => undefined)
 
-        return done(await next(e))
+        return await done(await next(e))
       }
       // The main thread's call: shown as what it is doing now, and counted against the turn.
       const call = { tool: e.tool, target: targetOf(args), since: await $.clock.now() }
@@ -1268,7 +1366,7 @@ export const register: Register = (on, options) => {
       current = call
       noteMainTool(e.tool, args, call.target)
       try {
-        return done(await next(e))
+        return await done(await next(e))
       } finally {
         if (current === call) current = null
       }
@@ -1481,6 +1579,29 @@ export const register: Register = (on, options) => {
     startPlayer($)
     if (shot === null) return <Text dimColor>pane-mod: reading the session…</Text>
     const columns = e.props.bodyColumns
+    const viewed = await read($, diffOpen)
+    const change = viewed === null || !sections.changes ? undefined : changes.get(viewed.path)
+
+    // A changed file's diff takes the whole pane, and the wheel scrolls it; one no longer changed shows the cards again.
+    if (viewed !== null && change === undefined) void update($, diffOpen, () => null).catch(() => undefined)
+    if (viewed !== null && change !== undefined) {
+      const paths = [...changes.keys()]
+      const at = paths.indexOf(change.path)
+      const goTo = (path: string | undefined, isWhole: boolean) => () => {
+        if (path !== undefined) void openDiff($, path, isWhole).catch(() => undefined)
+      }
+
+      paneOffset = e.props.scroll.offset
+      logHeight = 0
+      if (spriteAt === PANE) spriteAt = undefined
+
+      return diffView(kit, kit.Code, kit.Button, change, diffShown(change, viewed.isWhole), viewed.isWhole, { at, total: paths.length }, columns, {
+        onBack: () => void closeDiff($).catch(() => undefined),
+        onWhole: goTo(change.path, !viewed.isWhole),
+        onPrev: goTo(paths[at - 1], viewed.isWhole),
+        onNext: goTo(paths[at + 1], viewed.isWhole),
+      })
+    }
     const hasRoom = e.surface === 'terminal' && 'Image' in kit && isSpriteWanted && !isSpriteBlocked && columns >= PANE_SPRITE_MIN
     const offset = await read($, logOffset)
     const open = await read($, logOpen)
@@ -1505,6 +1626,7 @@ export const register: Register = (on, options) => {
       agents: agentsCard(kit, shot, columns, Math.max(1, e.props.scroll.bodyRows)),
       context: sections.context ? contextCard(kit, shot, columns) : null,
       recent: sections.recent ? recentCard(kit, shot, columns) : null,
+      changes: sections.changes ? changesCard(kit, kit.Button, shot, columns, path => void openDiff($, path, false).catch(() => undefined)) : null,
       log:
         sections.log && shot.log.length > 0
           ? logSection(kit, kit.Button, found, offset, open, columns, { query, total: shot.log.length, Input }, {
@@ -1967,6 +2089,114 @@ const recentCard = (kit: Kit, shot: Snapshot, columns: number) => {
         <Text key="recent-mcp" wrap="wrap">
           <Text dimColor>{'mcp '}</Text>
           <Text>{mcp.join(SEP)}</Text>
+        </Text>
+      )}
+    </Box>
+  )
+}
+
+/** A changed file's lines added and removed as the changes card and the diff name them; `?` where it was too large to compare. */
+const countsText = (change: Pick<ChangeRow, 'added' | 'removed'>): string =>
+  change.added === null || change.removed === null ? '?' : [change.added > 0 ? `+${change.added}` : '', change.removed > 0 ? `-${change.removed}` : ''].filter(part => part !== '').join(' ')
+
+/** The same, the lines added in green and those removed in red. */
+const countsMark = ({ Text }: Kit, change: Pick<ChangeRow, 'added' | 'removed'>) =>
+  change.added === null || change.removed === null ? (
+    <Text dimColor>?</Text>
+  ) : (
+    <Text>
+      {change.added > 0 && <Text color={ADDED}>{`+${change.added}`}</Text>}
+      {change.added > 0 && change.removed > 0 && <Text> </Text>}
+      {change.removed > 0 && <Text color={REMOVED}>{`-${change.removed}`}</Text>}
+    </Text>
+  )
+
+/**
+ * The files the latest turn that changed any changed, in the order first
+ * changed, the first CHANGE_ROWS and a count of the rest: each a row that opens
+ * its diff over the pane (the first nine also by their number while the pane
+ * holds the keyboard), with its lines added and removed. None while there are none.
+ */
+const changesCard = (kit: Kit, Button: Elements['terminal']['Button'], shot: Snapshot, columns: number, onOpen: (path: string) => void) => {
+  const { Box, Text } = kit
+  const inner = columns - CARD_INSET
+  const listed = shot.changes.slice(0, CHANGE_ROWS)
+
+  if (listed.length === 0) return null
+
+  return (
+    <Box key={CHANGES_KEY} flexDirection="column" borderStyle="round" borderColor={cardBorder} paddingX={1} width={columns}>
+      {cardTitle(kit, 'changes', `${shot.changes.length} ${shot.changes.length === 1 ? 'file' : 'files'}`, inner)}
+      {listed.map((change, index) => {
+        const hotkey = index < 9 ? { hotkey: String(index + 1) } : {}
+        // The key's digit and its colon stand before the name, and a cell between the name and the counts.
+        const room = inner - cellsOf(countsText(change)) - (index < 9 ? 4 : 1)
+
+        return (
+          <Box key={`change-${index}`} flexDirection="row" justifyContent="space-between" width={inner}>
+            <Button key={`change-${index}-open`} label={clipStart(change.name, room)} plain {...hotkey} onPress={() => onOpen(change.path)} />
+            {countsMark(kit, change)}
+          </Box>
+        )
+      })}
+      {shot.changes.length > listed.length && <Text dimColor>{`+${shot.changes.length - listed.length} more`}</Text>}
+    </Box>
+  )
+}
+
+/**
+ * A changed file's diff over the whole pane: a card that names the file with
+ * its lines added and removed and which of the changed files it is, and
+ * buttons (and keys) back to the cards (b), to its whole text or its changes
+ * alone (w), and to the changed file before or after it (p, n); under the
+ * card the diff, which `Code` draws with its line numbers, marks and colors.
+ */
+const diffView = (
+  kit: Kit,
+  Code: Elements['terminal']['Code'],
+  Button: Elements['terminal']['Button'],
+  change: Change,
+  diff: ReturnType<typeof diffOf> | null,
+  isWhole: boolean,
+  place: { at: number; total: number },
+  columns: number,
+  on: { onBack: () => void; onWhole: () => void; onPrev: () => void; onNext: () => void },
+) => {
+  const { Box, Text } = kit
+  const inner = columns - CARD_INSET
+  const which = `${place.at + 1}/${place.total}`
+
+  return (
+    <Box key="diff-view" flexDirection="column" width={columns}>
+      <Box key={DIFF_KEY} flexDirection="column" borderStyle="round" borderColor={cardBorder} paddingX={1} width={columns}>
+        <Box flexDirection="row" justifyContent="space-between" width={inner}>
+          <Text bold>{clipStart(change.name, inner - cellsOf(countsText(change)) - 1)}</Text>
+          {countsMark(kit, change)}
+        </Box>
+        <Box flexDirection="row" justifyContent="space-between" width={inner}>
+          <Box flexDirection="row" gap={2}>
+            <Button key="diff-back" label="◀ back" hotkey="b" plain onPress={on.onBack} />
+            {diff !== null && <Button key="diff-whole" label={isWhole ? 'changes only' : 'whole file'} hotkey="w" plain onPress={on.onWhole} />}
+            {place.at > 0 && <Button key="diff-prev" label="prev" hotkey="p" plain onPress={on.onPrev} />}
+            {place.at < place.total - 1 && <Button key="diff-next" label="next" hotkey="n" plain onPress={on.onNext} />}
+          </Box>
+          <Text dimColor>{which}</Text>
+        </Box>
+      </Box>
+      {diff === null && (
+        <Text key="diff-none" dimColor wrap="wrap">
+          too large to compare here
+        </Text>
+      )}
+      {diff !== null && isWhole && !diff.isWhole && (
+        <Text key="diff-whole-note" dimColor wrap="wrap">
+          the whole file is too long to draw: its changes are shown
+        </Text>
+      )}
+      {diff !== null && <Code key="diff-code" source={diff.text} format="diff" path={change.path} />}
+      {diff?.isCut === true && (
+        <Text key="diff-cut" dimColor wrap="wrap">
+          {`cut at ${DIFF_CHARS.toLocaleString('en-US')} characters`}
         </Text>
       )}
     </Box>

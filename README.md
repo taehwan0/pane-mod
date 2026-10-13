@@ -74,7 +74,7 @@ pane (오른쪽에 붙을 때, 카드는 둥근 테두리):
 │ $16.28                                           │
 │ 37.2M in · 182k out · cache 99%                  │
 ╰──────────────────────────────────────────────────╯
-  이어서 tasks, subagents, context, recent, log 카드 (기본 순서, paneOrder로 바꿈. 내용이 있고 설정이 켜져 있을 때만)
+  이어서 tasks, subagents, context, recent, changes, log 카드 (기본 순서, paneOrder로 바꿈. 내용이 있고 설정이 켜져 있을 때만)
 ```
 
 ## 요구 사항
@@ -89,7 +89,7 @@ pane (오른쪽에 붙을 때, 카드는 둥근 테두리):
 
 설치 명령은 위의 "빠른 시작"에 있고, 설치 중에 정할 설정과 확인 방법, 문제 해결은 [INSTALL.md](INSTALL.md)에 있습니다. 이 저장소 자체가 마켓플레이스(`.claude-plugin/marketplace.json`)입니다.
 
-저장소를 clone했다면 그 폴더를 마켓플레이스로 등록할 수도 있습니다(`claude plugin marketplace add ~/work/pane-mod`). 이 경우 파일을 고친 뒤 실행 중인 세션에서 `/reload-plugins`를 입력하면 바로 다시 읽습니다. 설치하지 않고 한 세션에서만 써 보려면 다음과 같이 실행합니다.
+저장소를 clone했다면 그 폴더를 마켓플레이스로 등록할 수도 있습니다(`claude plugin marketplace add ~/work/pane-mod`). 이 경우 파일을 고친 뒤 실행 중인 세션에서 `/reload-plugins`를 입력하면 바로 다시 읽습니다. 설치하지 않고 한 세션에서만 써 보려면 다음과 같이 실행합니다. 이미 설치했다면 이 세션은 설치할 때 고른 설정 대신 기본값으로 실행되므로, 먼저 INSTALL.md의 "설치하지 않고 한 세션에서만 써 보기"를 확인하세요.
 
 ```
 claude --plugin-dir ~/work/pane-mod
@@ -120,14 +120,15 @@ mod는 `statusLine` 영역에 그릴 수 없습니다. 그래서 HUD는 오른�
 | `showTotals` | `true` | 모델 카드의 비용 행(세션 비용)과 토큰 행(입력·출력 토큰, 캐시 적중률)을 표시합니다. |
 | `showContext` | `false` | context 카드(md 파일, hooks, 도구, MCP, skills, commands)와 band 4행을 표시합니다. 세션 중에 거의 바뀌지 않으므로 기본으로 꺼 둡니다. |
 | `showRecent` | `true` | recent 카드(이 세션에서 최근에 쓴 skill과 MCP 도구)를 pane에 표시합니다. 쓴 것이 없으면 켜 두어도 카드를 그리지 않습니다. |
+| `showChanges` | `true` | changes 카드(파일을 고친 가장 최근 턴이 Edit·Write로 고친 파일과, 추가하고 삭제한 줄 수)를 pane에 표시합니다. 파일 행을 누르면 pane 전체에 그 파일의 diff가 열립니다. 고친 파일이 없으면 켜 두어도 카드를 그리지 않습니다. |
 | `showLog` | `true` | log 카드(작업 로그, 상세, 파일 열기)를 pane에 표시합니다. |
 | `logTurns` | `50` | 세션마다 보관하는 최근 턴 수입니다. 넘으면 오래된 턴부터 지웁니다. `0`이면 모든 턴을 보관하고, 1부터 4까지는 5로 처리합니다(아래 "로그 보관" 참고). |
 | `logSessions` | `30` | 로그를 보관하는 세션 수입니다. 가장 최근에 저장한 세션부터 남깁니다. `0`이면 세션 수를 제한하지 않습니다. |
 | `logDays` | `14` | 마지막으로 저장한 뒤 로그를 보관하는 날수입니다. 이 기간이 지나면 그 세션의 로그 파일을 지웁니다. `0`이면 기간을 제한하지 않습니다. |
-| `paneOrder` | `tasks,agents,context,recent,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. `tasks`, `agents`, `context`, `recent`, `log`를 쉼표나 공백으로 구분해서 적고, 대소문자는 가리지 않습니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙입니다. 그래서 순서를 바꿔도 카드가 사라지지 않으며, 카드를 숨길 때는 `show…` 설정을 씁니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없습니다(아래 "로그 스크롤" 참고). |
+| `paneOrder` | `tasks,agents,context,recent,changes,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. `tasks`, `agents`, `context`, `recent`, `changes`, `log`를 쉼표나 공백으로 구분해서 적고, 대소문자는 가리지 않습니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙입니다. 그래서 순서를 바꿔도 카드가 사라지지 않으며, 카드를 숨길 때는 `show…` 설정을 씁니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없습니다(아래 "로그 스크롤" 참고). |
 | `sessionColor` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 쓰고, 고른 색이 없으면 테두리를 흐린 노랑으로 칠합니다. 테마 키나 `#rrggbb` 형식의 색을 적으면 `/color`와 관계없이 그 색으로 고정합니다. 올바르지 않은 값은 `auto`로 처리합니다. |
 | `modelColor` | `claude` | 모델 카드의 테두리 색입니다. 테마 키나 `#rrggbb` 형식의 색을 적으며, 올바르지 않은 값은 `claude`(Claude 주황)로 처리합니다. |
-| `cardColor` | `subtle` | 나머지 카드(tasks, subagents, context, recent, log)의 테두리 색입니다. 테마 키나 `#rrggbb` 형식의 색을 적으며, 올바르지 않은 값은 `subtle`(테마의 회색)로 처리합니다. |
+| `cardColor` | `subtle` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. 테마 키나 `#rrggbb` 형식의 색을 적으며, 올바르지 않은 값은 `subtle`(테마의 회색)로 처리합니다. |
 | `barFilled` | `▰` | 모든 게이지(effort, ctx, 5h, 7d)에서 채워진 칸을 그리는 문자입니다. 폭이 한 칸인 문자 하나여야 하며, 이모지, 전각 문자, 공백, 제어 문자, 결합 문자는 받지 않습니다. 올바르지 않은 값은 기본값으로 처리합니다. |
 | `barEmpty` | `▱` | 모든 게이지에서 빈칸을 그리는 문자입니다. 조건은 `barFilled`와 같으며, 올바르지 않은 값은 기본값으로 처리합니다. |
 | `spriteSource` | `auto` | 스프라이트 프레임을 터미널에 보내는 방식입니다. `auto`는 Ghostty와 kitty에는 PNG 파일 경로를, 그 밖의 터미널에는 PNG 데이터를 보냅니다. 파일 경로가 거부되면 그때부터 데이터로 보냅니다. `file`과 `bytes`로 고정할 수도 있습니다. |
@@ -165,7 +166,7 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 
 | 상황 (`layout: auto`) | 동작 |
 |---|---|
-| 전체 화면 보기, 폭 충분 | 오른쪽에 pane(요청 폭 56칸)을 붙입니다. pane에는 pane 폭 전체를 쓰는 첫 카드에 세션·진행 중인 턴과 오른쪽의 작은 스프라이트(12×6칸)를 함께 담고, 그 아래에 모델 카드(모델, effort, 사용량, 비용), tasks, subagents, context, recent, log 카드를 차례로 그립니다. 모델 카드 아래 카드의 순서는 `paneOrder`로 바꿀 수 있습니다. 카드는 둥근 테두리(`Box`의 `borderStyle: 'round'`)로 관심사를 묶으며, 테두리 색은 `sessionColor`, `modelColor`, `cardColor`로 바꿉니다. 내용이 없거나 설정이 꺼진 카드는 그리지 않습니다. 폭이 좁으면 잘라 내지 않고 줄을 바꿉니다. band는 기본으로 비워 두고, `bandWithPane: line`이면 한 줄 요약(`━━  모델  effort · ctx · 5h ·  ● WORKING  경과 시간 · 서브에이전트`)을 그립니다. |
+| 전체 화면 보기, 폭 충분 | 오른쪽에 pane(요청 폭 56칸)을 붙입니다. pane에는 pane 폭 전체를 쓰는 첫 카드에 세션·진행 중인 턴과 오른쪽의 작은 스프라이트(12×6칸)를 함께 담고, 그 아래에 모델 카드(모델, effort, 사용량, 비용), tasks, subagents, context, recent, changes, log 카드를 차례로 그립니다. 모델 카드 아래 카드의 순서는 `paneOrder`로 바꿀 수 있습니다. 카드는 둥근 테두리(`Box`의 `borderStyle: 'round'`)로 관심사를 묶으며, 테두리 색은 `sessionColor`, `modelColor`, `cardColor`로 바꿉니다. 내용이 없거나 설정이 꺼진 카드는 그리지 않습니다. 폭이 좁으면 잘라 내지 않고 줄을 바꿉니다. band는 기본으로 비워 두고, `bandWithPane: line`이면 한 줄 요약(`━━  모델  effort · ctx · 5h ·  ● WORKING  경과 시간 · 서브에이전트`)을 그립니다. |
 | 창을 좁히거나 다른 pane 탭이 앞에 있음 | pane이 배치되지 않거나 가려진 것을 감지하고, band가 5행 HUD로 펼쳐집니다. |
 | 전체 화면이 아닌 보기 | pane을 열지 않습니다. 열린 pane이 입력창 위 블록으로 놓이면 닫고 band를 씁니다. |
 | pane을 직접 닫음 | 다시 자동으로 열지 않습니다. `/pane-mod`로 다시 엽니다. |
@@ -189,7 +190,20 @@ pane의 카드:
 | subagents | 서브에이전트 목록. 제목 옆에 상태별 수와 전체 수(`2 running · 1 idle · 3`)를 적습니다. 행마다 이름(이름이 없으면 타입)과 흐린 타입, 작업 설명, 경과 시간, 도구 호출 수, 지금 실행 중인 도구를 보여 줍니다(아래 "표시 항목과 출처" 참고) |
 | context | md 파일(출처별), hooks, 도구, MCP(도구·서버 수), skills, slash commands를 두 줄로 보여 줍니다. 기본으로 꺼져 있습니다(`showContext`) |
 | recent | 이 세션에서 최근에 쓴 skill(Skill 도구로 실행한 것)과 MCP 도구(`server:tool`)를 가장 최근에 쓴 것부터 각각 5개까지 보여 줍니다. skill은 `skills` 행에, MCP 도구는 `mcp` 행에 모으며, 폭이 좁으면 줄을 바꿉니다. 진행 중인 턴과 이 세션의 로그 줄에서 모으고, 서브에이전트가 쓴 것도 포함합니다. 쓴 것이 없으면 카드도 없습니다(`showRecent`) |
+| changes | 파일을 고친 가장 최근 턴에서 Claude가 Edit·Write 도구로 고친 파일을 처음 고친 순서대로 8개까지 보여 줍니다. 서브에이전트가 고친 파일도 포함합니다. 제목 옆에 파일 수를 적고, 행마다 작업 폴더 기준의 경로와, 그 턴이 파일을 고치기 전과 비교해 추가한 줄 수(초록 `+N`)와 삭제한 줄 수(빨강 `-N`)를 적습니다. 행을 누르면(또는 pane에 포커스가 있을 때 `1`~`9` 키) pane 전체에 그 파일의 diff가 열립니다(아래 "diff 보기" 참고). 고친 파일이 없으면 카드도 없습니다(`showChanges`) |
 | log | 끝난 턴마다 한 줄: 시각, 결과(✓ 완료, ⏹ 중단, ⊘ 거절, ✗ 오류), 소요 시간, 프롬프트 앞부분, 한 일(파일 수정 수, bash, 읽기·검색, 서브에이전트, 실패한 호출 `err`, 거부된 호출 `denied`), 출력 토큰, 캐시 적중률. 최신 순으로 **최근 5줄**을 보여 줍니다. 로그 카드가 pane의 마지막 카드이면, 로그 위에서 마우스 휠을 굴릴 때 pane은 그대로 두고 로그만 한 줄씩 넘어갑니다(아래 "로그 스크롤" 참고). `▲ older` / `▼ newer` 버튼(클릭, 또는 pane에 포커스가 있을 때 `o` / `n` 키)은 5줄씩 넘깁니다. 줄이 5줄보다 많으면 제목 아래에 검색칸이 생깁니다(아래 "로그 검색" 참고). 줄 앞의 `▸`를 누르면 그 줄 아래에 상세 내용이 펼쳐집니다(아래 "로그 상세" 참고). 세션마다 최근 50턴(`logTurns`)을 보관합니다(아래 "로그 보관" 참고). |
+
+### diff 보기
+
+- changes 카드에서 파일 행을 누르면, 카드 대신 그 파일의 diff가 pane 전체에 그려집니다. diff는 Claude Code의 `Code` 요소(`format: 'diff'`)가 줄 번호, `+`/`-` 표시, 추가·삭제 색으로 그리며, 문법 강조는 파일의 확장자를 따릅니다.
+- 처음에는 바뀐 부분만, 변경마다 앞뒤 세 줄과 함께 보여 줍니다. `w: whole file`을 누르면 파일 전체를 보여 주면서 바뀐 줄을 표시하고, `w: changes only`를 누르면 바뀐 부분만 보여 주는 화면으로 돌아갑니다.
+- `p: prev`와 `n: next`는 앞뒤 파일로 넘어가고, `b: ◀ back`은 카드 화면으로 돌아갑니다. 이 키들은 pane에 포커스가 있을 때 동작합니다. Esc는 pane을 닫으므로, 카드 화면으로 돌아갈 때는 `b`를 씁니다.
+- 비교하는 두 내용은 그 턴에서 파일을 처음 고치기 직전의 내용(도구 결과의 `originalFile`, Write로 새로 만든 파일은 빈 내용)과, 마지막으로 고친 뒤 다시 읽은 파일의 내용입니다. 그래서 한 턴에서 같은 파일을 여러 번 고쳐도 diff는 하나로 합쳐지고, 원래 내용으로 되돌린 파일은 목록에서 빠집니다.
+- 파일을 고치지 않은 턴은 목록을 바꾸지 않습니다. 다음 턴이 파일을 처음 고칠 때 목록을 새로 시작합니다.
+- Bash로 바꾼 파일(`sed`, 포매터, `git checkout` 등)은 목록에 나오지 않습니다. Edit·Write 도구의 결과만 보기 때문입니다.
+- 파일 내용은 메모리에만 두고 파일로 저장하지 않습니다. 그래서 mod를 다시 로드하거나 `/clear`로 세션이 바뀌면 목록이 비고, 지난 세션의 턴은 diff를 볼 수 없습니다.
+- 512 KiB가 넘는 파일은 줄 수 대신 `?`를 적고 diff를 그리지 않습니다. diff 하나는 80,000자까지 그리며, 파일 전체가 이보다 길면 바뀐 부분만 보여 줍니다.
+- diff를 보는 동안 휠은 언제나 pane을 스크롤합니다.
 
 ### 로그 스크롤
 
@@ -232,14 +246,14 @@ pane의 카드:
 ### 로그 파일 열기
 
 - log 섹션 아래의 `f: open file`을 클릭하거나, pane에 포커스가 있을 때 `f` 키를 누르면 이 세션의 로그를 Markdown 파일로 쓰고 바로 엽니다.
-- 파일 위치는 `~/.claude/plugins/data/pane-mod-pane-mod/logs/<세션 ID>.md`입니다. Claude Code가 이 플러그인에 정해 주는 데이터 폴더(`CLAUDE_PLUGIN_DATA`)이므로, 플러그인을 삭제하면 함께 지워집니다. `CLAUDE_CONFIG_DIR`을 쓰면 그 아래에 둡니다. 이 Markdown 파일은 아래 "로그 보관"의 한도와 관계없이 남습니다.
+- 파일 위치는 `~/.claude/plugins/data/pane-mod-pane-mod/logs/<세션 ID>.md`입니다. Claude Code가 이 플러그인의 데이터 폴더로 정하는 위치이므로, 플러그인을 삭제하면 함께 지워집니다. `CLAUDE_CONFIG_DIR`을 쓰면 그 아래에 둡니다. 이 Markdown 파일은 아래 "로그 보관"의 한도와 관계없이 남습니다.
 - 파일 맨 위에는 세션 이름, 프로젝트(branch), 세션 ID, 작성 시각을 적습니다. 그 아래에는 턴마다 제목(날짜 · 결과 · 소요 시간)을 달고, 프롬프트를 인용문(`>`)으로, 로그 상세의 항목(수정 파일, 명령, 도구별 호출 수, skill, MCP 도구, 서브에이전트, 실패한 호출, 승인 요청, 거부된 호출, 개수)을 목록으로 최신 순으로 적습니다. 서브에이전트와 실패한 호출은 한 줄에 하나씩 하위 목록으로 적습니다.
 - 파일은 macOS의 `open`으로 엽니다(그 확장자의 기본 앱). `open`이 없으면 `xdg-open`을 씁니다. 열지 못해도 파일은 그 경로에 남습니다.
 - 파일은 누를 때만 씁니다. 누를 때마다 그 시점의 로그로 다시 씁니다.
 
 ### 로그 보관
 
-- 로그는 **세션 ID별로** 플러그인 데이터 폴더의 JSON 파일에 저장합니다. 위치는 `~/.claude/plugins/data/pane-mod-pane-mod/sessions/<세션 ID>.json`이며, `CLAUDE_PLUGIN_DATA`가 가리키는 폴더(`CLAUDE_CONFIG_DIR`을 쓰면 그 아래)입니다. 턴이 끝날 때마다 저장하고, `/color`로 고른 세션 색, Claude의 작업 목록, 토큰 합계도 같은 파일에 함께 저장합니다.
+- 로그는 **세션 ID별로** 플러그인 데이터 폴더의 JSON 파일에 저장합니다. 위치는 `~/.claude/plugins/data/pane-mod-pane-mod/sessions/<세션 ID>.json`입니다(`CLAUDE_CONFIG_DIR`을 쓰면 그 아래). 환경 변수 `CLAUDE_PLUGIN_DATA`가 이름이 `pane-mod-`로 시작하는 폴더를 가리키면 그 폴더를 쓰고, 다른 플러그인의 폴더를 가리키면 따르지 않습니다. Claude Code의 Bash 도구 안에서 Claude Code를 다시 실행하면 이 변수에 다른 플러그인의 폴더가 들어 있을 수 있기 때문입니다. 턴이 끝날 때마다 저장하고, `/color`로 고른 세션 색, Claude의 작업 목록, 토큰 합계도 같은 파일에 함께 저장합니다.
 - 턴이 진행되는 동안 세션이 끝나면(터미널 창을 닫거나 프로세스가 종료 신호를 받으면) 그 턴을 끝난 시각까지의 소요 시간과 함께 `⏹ 중단`으로 저장합니다. 이때는 종료가 늦어지지 않도록 보관 한도를 넘은 파일을 지우지 않고, 다음에 저장할 때 지웁니다.
 - `claude -c`나 `claude --resume`으로 같은 세션을 이어 가면 세션 ID가 같으므로 로그가 복구됩니다. 다른 세션과는 공유되지 않습니다. `--fork-session`으로 갈라져 나온 세션은 새 ID이므로 빈 로그로 시작합니다.
 - 보관 한도는 아래 세 설정으로 정합니다. 각 설정에 `0`을 적으면 그 한도를 두지 않으므로, 셋 다 `0`이면 모든 세션의 모든 턴을 기간 제한 없이 보관합니다.
@@ -382,7 +396,7 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 - 네트워크 요청은 없습니다(`$.http`를 호출하지 않습니다). 외부 프로그램은 두 경우에만 실행합니다. log의 `f: open file`을 누르면 로그 Markdown 파일을 엽니다(`$.process.run(['/usr/bin/open', 로그 파일])`, 없으면 `xdg-open`). 로그를 저장할 때 보관 한도를 넘은 로그 파일이 있으면 `/bin/rm -f -- <파일들>`로 지웁니다. 지우는 대상은 데이터 폴더의 `sessions/`에 있는 로그 파일뿐입니다. `claude plugin validate .`의 `calls:` 목록에서 `$.process.run (via openLogFile, removeKept)`으로 확인할 수 있습니다.
 - 슬래시 명령의 출력 행(`session.append`의 `door: 'command'`)을 읽지만, `/effort`의 레벨 문구, `/rename`의 이름 문구, `/color`의 색 문구만 찾고 다른 내용은 쓰지 않습니다.
 - 승인 창 아래 한 줄과 작업 로그를 위해 설정 훅 이벤트(`PermissionRequest`, `Notification`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`)를 받지만, 결정을 바꾸지 않고 그대로 넘깁니다.
-- 파일 읽기는 `.git` 경로 탐색과 `HEAD` 읽기, 스프라이트·소리 폴더의 파일 목록 읽기(`$.fs.list`), `png` 소스를 쓸 때의 스프라이트 PNG 읽기, `soundDir`로 지정한 폴더의 소리 파일 읽기, 보관한 로그 파일과 그 폴더의 목록 읽기뿐입니다. 파일 쓰기는 턴이 끝날 때마다(그리고 턴이 진행되는 동안 세션이 끝날 때) 세션의 로그 파일을 쓰는 것, `f: open file`을 누를 때 로그 Markdown 파일을 쓰는 것, `rm`을 실행할 수 없을 때 지울 로그 파일을 비우는 것뿐입니다.
+- 파일 읽기는 `.git` 경로 탐색과 `HEAD` 읽기, 스프라이트·소리 폴더의 파일 목록 읽기(`$.fs.list`), `png` 소스를 쓸 때의 스프라이트 PNG 읽기, `soundDir`로 지정한 폴더의 소리 파일 읽기, 보관한 로그 파일과 그 폴더의 목록 읽기, Edit·Write 도구가 고친 파일 읽기(changes 카드의 줄 수와 diff를 위해 읽으며, 내용은 메모리에만 둡니다)뿐입니다. 파일 쓰기는 턴이 끝날 때마다(그리고 턴이 진행되는 동안 세션이 끝날 때) 세션의 로그 파일을 쓰는 것, `f: open file`을 누를 때 로그 Markdown 파일을 쓰는 것, `rm`을 실행할 수 없을 때 지울 로그 파일을 비우는 것뿐입니다.
 - 작업 로그를 플러그인 데이터 폴더의 `sessions/`에 세션별 JSON 파일로 저장합니다(위 "로그 보관" 참고). 여기에는 **각 턴의 프롬프트(태그를 뺀 최대 300자)**, **수정한 파일 이름과 실행한 명령의 첫 줄**, **실패한 도구 호출의 오류 메시지 첫 줄(최대 100자)**, **승인 창이 열리거나 거부된 호출의 대상(파일 이름, 명령 앞부분 등)**, 도구별 호출 수, skill과 MCP 도구의 이름, 서브에이전트의 종류와 작업 설명, 시각, 소요 시간, 도구 사용 수, 출력 토큰, 캐시 적중률, 세션 색, 작업 목록, 토큰 합계가 들어갑니다. 외부로 보내지는 않습니다.
 - 로그 상세의 `copy prompt`를 누르면 그 프롬프트를 클립보드에 씁니다(`$.ui.copy`). 누르지 않으면 클립보드를 건드리지 않습니다.
 - Ghostty와 kitty에서는 터미널이 스프라이트 PNG를 직접 읽습니다(`Image`의 `file` 소스). 이미지 데이터가 엔진을 거치지 않습니다.
@@ -398,13 +412,14 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 | `.claude-plugin/marketplace.json` | 이 폴더를 마켓플레이스로 등록합니다(`source: "./"`). |
 | `hooks/hooks.json` | hooks module 경로(`./register.tsx`) |
 | `hooks/register.tsx` | 데이터 수집, asset 폴더 탐색, 스프라이트 동작 전환, 소리, 알림, band와 pane 렌더링 |
-| `hooks/format.ts` | 게이지, 색상, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록 같은 순수 함수 |
-| `types/index.d.ts` | 공유 타입과 `$.state` 계약(`snap`, `frame`, `logOffset`, `logOpen`, `logQuery`) |
+| `hooks/format.ts` | 게이지, 색상, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 줄 단위 diff 같은 순수 함수 |
+| `types/index.d.ts` | 공유 타입과 `$.state` 계약(`snap`, `frame`, `logOffset`, `logOpen`, `logQuery`, `diffOpen`) |
 | `tests/pane-mod.test.tsx` | 화면 구성, 서브에이전트 목록, 스프라이트 전환, asset이 없을 때의 동작 테스트 |
 | `assets/{idle,working,complete}/` | 선택 사항인 스프라이트 프레임 폴더(git 제외, 저장소에는 없음). 보통은 `spriteDir`로 다른 폴더를 지정합니다. |
 | `assets/sounds/<상태>/` | 선택 사항인 상태별 소리 폴더(git 제외, 저장소에는 없음). 보통은 `soundDir`로 다른 폴더를 지정합니다. |
 | `README.en.md` | 이 문서의 영어판 |
 | `INSTALL.md` | 설치 절차 |
+| `CHANGELOG.md` | 버전별 변경 기록 |
 | `AGENTS.md` | AI 코딩 에이전트를 위한 지침(구조, 개발 절차, 설치 절차) |
 | `docs/sprite-states.md` | 구분할 수 있는 상태와 필요한 스프라이트, 제작 규격 |
 | `docs/demo.gif` | README 맨 위의 데모 화면 |

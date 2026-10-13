@@ -14,7 +14,7 @@
 
 ## 2. 설치 중에 정할 설정
 
-설치 화면이 아래 스물여덟 항목을 묻습니다. 항목은 세 묶음으로 나뉩니다. 무엇을 화면에 노출할지, 스프라이트와 소리를 어떻게 쓸지, 승인 창 아래에 한 줄을 붙일지를 차례로 정합니다. 답하지 않은 항목은 기본값을 씁니다. 셸에서 설치할 때는 고른 값마다 `--config 키=값`으로 넘깁니다.
+설치 화면이 아래 스물아홉 항목을 묻습니다. 항목은 세 묶음으로 나뉩니다. 무엇을 화면에 노출할지, 스프라이트와 소리를 어떻게 쓸지, 승인 창 아래에 한 줄을 붙일지를 차례로 정합니다. 답하지 않은 항목은 기본값을 씁니다. 셸에서 설치할 때는 고른 값마다 `--config 키=값`으로 넘깁니다.
 
 ### 2-1. 노출할 항목
 
@@ -30,15 +30,16 @@
 | `showTotals` | `true`, `false` | `true` | 모델 카드의 비용(세션 비용)과 토큰·캐시 적중률 행입니다. pane에만 있습니다. |
 | `showContext` | `true`, `false` | `false` | context 카드(md 파일, hooks, 도구, MCP, skills, commands 수)와 band 4행입니다. 세션 중에 거의 바뀌지 않아 기본으로 꺼 둡니다. |
 | `showRecent` | `true`, `false` | `true` | recent 카드(이 세션에서 최근에 쓴 skill과 MCP 도구)입니다. pane에만 있으며, 쓴 것이 없으면 그리지 않습니다. |
+| `showChanges` | `true`, `false` | `true` | changes 카드(파일을 고친 가장 최근 턴이 고친 파일과, 추가하고 삭제한 줄 수)입니다. 파일 행을 누르면 pane 전체에 diff가 열립니다. pane에만 있으며, 고친 파일이 없으면 그리지 않습니다. |
 | `showLog` | `true`, `false` | `true` | log 카드(작업 로그, 상세, 파일 열기)입니다. pane에만 있습니다. |
 | `logTurns` | `0`, 5 이상 | `50` | 세션마다 로그에 보관하는 최근 턴 수입니다. `0`이면 모든 턴을 보관합니다. |
 | `logSessions` | `0`, 1 이상 | `30` | 로그를 보관하는 세션 수입니다. 가장 최근에 저장한 세션부터 남기며, `0`이면 세션 수를 제한하지 않습니다. |
 | `logDays` | `0`, 1 이상 | `14` | 마지막으로 저장한 뒤 로그를 보관하는 날수입니다. `0`이면 기간을 제한하지 않습니다. 로그 파일의 위치와 정리 방식은 README의 "로그 보관"에 있습니다. |
 | `agents` | `summary`, `list`, `off` | `summary` | HUD에 서브에이전트를 표시하는 방식입니다. `summary`는 상태별 개수를 한 줄로 보여 줍니다(`↳ subagents 5  ● running 2  ◐ waiting 1  ✓ done 1  ✗ failed 1`). `list`는 에이전트마다 한 줄씩 보여 줍니다(이름과 타입, 작업 설명, 경과 시간, 도구 호출 수, 현재 도구). `off`는 표시하지 않습니다. 어느 쪽을 골라도 입력창 아래의 Claude Code 작업 목록은 그대로 표시됩니다. mod가 그 목록을 제어할 수 없기 때문입니다. |
-| `paneOrder` | `tasks`, `agents`, `context`, `recent`, `log`를 쉼표나 공백으로 구분한 순서 | `tasks,agents,context,recent,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙이므로 순서 때문에 카드가 사라지지는 않습니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없고, 버튼과 `o` / `n` 키로만 넘깁니다. |
+| `paneOrder` | `tasks`, `agents`, `context`, `recent`, `changes`, `log`를 쉼표나 공백으로 구분한 순서 | `tasks,agents,context,recent,changes,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙이므로 순서 때문에 카드가 사라지지는 않습니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없고, 버튼과 `o` / `n` 키로만 넘깁니다. |
 | `sessionColor` | `auto`, 테마 키, `#rrggbb` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 따르고, 고른 색이 없으면 흐린 노랑을 씁니다. 다른 값을 적으면 `/color`와 관계없이 그 색으로 고정합니다. |
 | `modelColor` | 테마 키, `#rrggbb` | `claude` | 모델 카드의 테두리 색입니다. |
-| `cardColor` | 테마 키, `#rrggbb` | `subtle` | 나머지 카드(tasks, subagents, context, recent, log)의 테두리 색입니다. |
+| `cardColor` | 테마 키, `#rrggbb` | `subtle` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. |
 | `barFilled` | 폭이 한 칸인 문자 하나 | `▰` | 모든 게이지(effort, ctx, 5h, 7d)에서 채워진 칸을 그리는 문자입니다. 이모지, 전각 문자, 공백, 제어 문자는 받지 않습니다. |
 | `barEmpty` | 폭이 한 칸인 문자 하나 | `▱` | 모든 게이지에서 빈칸을 그리는 문자입니다. 조건은 `barFilled`와 같습니다. |
 
@@ -115,10 +116,22 @@ claude plugin install pane-mod@pane-mod \
 
 ### 설치하지 않고 한 세션에서만 써 보기
 
-저장소를 clone한 뒤 그 폴더를 지정해서 실행합니다. 같은 이름의 플러그인은 하나만 로드되므로, pane-mod가 이미 설치되어 있다면 `claude plugin disable pane-mod@pane-mod`로 잠시 꺼 둡니다.
+저장소를 clone한 뒤 그 폴더를 지정해서 실행합니다.
 
 ```
 claude --plugin-dir ~/work/pane-mod
+```
+
+pane-mod가 이미 설치되어 있어도 끌 필요는 없습니다. 이렇게 실행한 세션에서는 clone한 사본이 설치본을 대신하고, 다른 세션은 계속 설치본으로 동작합니다.
+
+다만 clone한 사본은 설치본과 다른 이름(`pane-mod@inline`)으로 실행되므로, 설치할 때 고른 설정을 쓰지 않고 모든 항목을 기본값으로 실행합니다. 로그 폴더는 설치본과 같기 때문에, 로그 보관 한도를 바꿔 두었거나 제한 없이 보관하고 있다면 기본 한도(50턴, 30세션, 14일)에 따라 오래된 로그가 지워질 수 있습니다. 설치본과 같은 설정으로 실행하려면 `~/.claude/settings.json`의 `pluginConfigs["pane-mod@pane-mod"].options` 값을 `pane-mod@inline` 아래에 옮겨 적은 파일을 따로 만들고, `--settings`로 넘깁니다. `~/.claude/settings.json`은 고치지 않습니다.
+
+```json
+{ "pluginConfigs": { "pane-mod@inline": { "options": { "logTurns": 0, "logSessions": 0, "logDays": 0 } } } }
+```
+
+```
+claude --plugin-dir ~/work/pane-mod --settings ~/.config/pane-mod/dev-settings.json
 ```
 
 ## 4. 설치 확인
@@ -127,7 +140,7 @@ claude --plugin-dir ~/work/pane-mod
 
    ```
    ❯ pane-mod@pane-mod
-     Version: 1.0.0
+     Version: 1.1.0
      Scope: user
      Status: ✔ enabled
    ```
@@ -178,7 +191,7 @@ python3 -c "import base64,sys;d=base64.b64encode(open('$HOME/sprite.png','rb').r
 AI에게 "설치해 줘"라고 맡길 때 AI가 지켜야 할 규칙입니다. 단계별 절차는 [AGENTS.md](AGENTS.md)의 "설치를 요청받았을 때"에 있습니다.
 
 1. **요청받았을 때만 설치합니다.** 이 문서를 읽었다는 사실만으로 설치하지 않습니다.
-2. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.0.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
+2. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.1.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
 3. **1장의 확인 항목을 점검합니다.** `claude` 명령이 없으면 멈추고, Claude Code를 대신 설치하지 않습니다.
 4. **2장의 설정을 세 묶음으로 나눠 사용자에게 묻습니다.** 노출할 항목(2-1), 스프라이트와 소리, 직접 준비한 폴더(2-2), 알림(2-3)을 기본값과 함께 보여 주고, 바꿀 항목만 답받습니다. `agents`(`summary` / `list` / `off`)와 노출할 섹션은 반드시 묻습니다. 사용자가 답하지 않은 항목은 기본값을 씁니다.
 5. **방법 B의 셸 명령으로 설치하고, 고른 값을 `--config`로 넘깁니다.** `/plugin …`과 `/plugin configure …`는 사람이 입력창에 입력하는 명령이므로 AI가 도구로 실행할 수 없습니다. 필요하면 사용자에게 입력해 달라고 요청합니다.
