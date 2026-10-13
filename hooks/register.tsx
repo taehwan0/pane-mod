@@ -3,7 +3,7 @@ import type { AgentInfo, AudioClip, Elements, EngineInterface, FsEntry, ImageSou
 
 import type { AgentRow, AgentState, Alert, AlertKind, ChangeRow, LogAgent, LogCall, LogEntry, LogError, Outcome, SectionName, SessionColor, Snapshot, TaskItem, Totals } from '../types'
 
-import { addUsage, agentCounts, agentLine, audioMime, bar, BAR_GLYPHS, barGlyphOf, baseName, cacheHitOf, callsLine, cellsOf, cleanOf, clip, clipStart, clockOf, colorOf, colorSaid, countHooks, countTool, dateOf, diffCounts, diffOf, doneOf, duration, effortGauge, effortGuess, effortLevelOf, effortSaid, effortTint, elapsed, errorLine, errorText, folderOf, frameAt, framesFor, gitDirOf, headName, hintTail, isEnded, isWorktreeDir, limitOf, limitSetting, lineDiff, linesOf, LOG_CAPS, logFrom, logMarkdown, logMatches, logWheel, markReached, mcpNameOf, mcpServersOf, memoryOf, minutesToFull, modelBase, modelName, nextFrame, NO_FRAMES, NO_TOTALS, oneLine, OUTCOME_WORDS, PANE_CARDS, paneOrderOf, parentOf, partText, pathIn, promptOf, recentOf, renameSaid, sealedOf, sessionColorOf, soundFiles, spriteFrames, stampOf, standing, STATE_ORDER, stateOf, sweepOf, targetOf, tasksFrom, tasksInOrder, tasksOfTodos, tint, tokensShort, toolKind, toolsLine, toolsOf, totalsFrom, updateTask, withOnce, withoutFrame, wrapCells } from './format'
+import { addUsage, agentCounts, agentLine, audioMime, bar, BAR_GLYPHS, barGlyphOf, baseName, cacheHitOf, callsLine, cellsOf, cleanOf, clip, clipStart, clockOf, colorOf, colorSaid, countHooks, countTool, dateOf, diffCounts, diffOf, doneOf, duration, effortGauge, effortGuess, effortLevelOf, effortSaid, effortTint, elapsed, errorLine, errorText, folderOf, frameAt, framesFor, gitDirOf, headName, hintTail, isEnded, isOwnData, isWorktreeDir, limitOf, limitSetting, lineDiff, linesOf, LOG_CAPS, logFrom, logMarkdown, logMatches, logWheel, markReached, mcpNameOf, mcpServersOf, memoryOf, minutesToFull, modelBase, modelName, nextFrame, NO_FRAMES, NO_TOTALS, oneLine, OUTCOME_WORDS, PANE_CARDS, paneOrderOf, parentOf, partText, pathIn, promptOf, recentOf, renameSaid, sealedOf, sessionColorOf, soundFiles, spriteFrames, stampOf, standing, STATE_ORDER, stateOf, sweepOf, targetOf, tasksFrom, tasksInOrder, tasksOfTodos, tint, tokensShort, toolKind, toolsLine, toolsOf, totalsFrom, updateTask, withOnce, withoutFrame, wrapCells } from './format'
 import type { BarGlyphs, EffortLevel, Frames, Motion, PaneCard } from './format'
 
 /** The GIF's own pace: 25 frames every 2 seconds. */
@@ -83,8 +83,9 @@ const LOG_FIND_KEY = 'log-find'
 /**
  * Where the logs are kept (KEPT_FOLDER) and written to be read (`logs`): the
  * plugins' data folder as Claude Code names this plugin's
- * (`<plugin>-<marketplace>`), which an uninstall clears; `CLAUDE_PLUGIN_DATA`
- * names it where the engine says.
+ * (`<plugin>-<marketplace>`), which an uninstall clears. `CLAUDE_PLUGIN_DATA`
+ * names it where it names a folder of this plugin's (`isOwnData`); another
+ * plugin's is passed over.
  */
 const DATA_FOLDER = 'plugins/data/pane-mod-pane-mod'
 /** What opens a written file with the app the system picks: macOS's, then the freedesktop one. */
@@ -779,7 +780,7 @@ const dataFolder = async ($: Engine): Promise<string | null> => {
     $.env.get('HOME').catch(() => undefined),
   ])
 
-  if ((data ?? '') !== '') return data ?? null
+  if (data !== undefined && isOwnData(data)) return data
   const base = (config ?? '') !== '' ? config : (home ?? '') !== '' ? `${home}/.claude` : null
 
   return base === null || base === undefined ? null : `${base}/${DATA_FOLDER}`

@@ -143,9 +143,9 @@ pane-mod/
 ├── hooks/
 │   ├── hooks.json           # { "modules": ["./register.tsx"] }
 │   ├── register.tsx         # hooks module: 데이터 수집, asset 폴더 탐색, 스프라이트와 소리, 알림, 작업 로그, band와 pane 그리기
-│   └── format.ts            # $를 쓰지 않는 순수 함수: 게이지, 색, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 로그 변환과 로그 줄의 상한(LOG_CAPS), 로그 파일 이름과 보관 한도에 따른 정리 대상(`sweepOf`), 로그 검색(`logMatches`), 힌트 줄의 한 줄 정보(`hintTail`), 카드 순서와 색·게이지 문자 설정 검사, 줄 단위 diff(`lineDiff`, `hunksOf`, `unifiedOf`, `diffOf`)와 경로 표기(`pathIn`, `clipStart`)
+│   └── format.ts            # $를 쓰지 않는 순수 함수: 게이지, 색, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 로그 변환과 로그 줄의 상한(LOG_CAPS), 로그 파일 이름과 보관 한도에 따른 정리 대상(`sweepOf`), `CLAUDE_PLUGIN_DATA`가 이 플러그인의 폴더인지 판정(`isOwnData`), 로그 검색(`logMatches`), 힌트 줄의 한 줄 정보(`hintTail`), 카드 순서와 색·게이지 문자 설정 검사, 줄 단위 diff(`lineDiff`, `hunksOf`, `unifiedOf`, `diffOf`)와 경로 표기(`pathIn`, `clipStart`)
 ├── types/index.d.ts         # 공유 타입과 $.state 계약 (snap, frame, logOffset, logOpen, logQuery, diffOpen)
-├── tests/pane-mod.test.tsx  # claude-code/testing 기반 테스트 84개
+├── tests/pane-mod.test.tsx  # claude-code/testing 기반 테스트 86개
 ├── assets/                  # 선택 사항인 로컬 스프라이트·소리 폴더 (git 제외, 저장소에는 없음. 아래 "asset" 참고)
 ├── docs/sprite-states.md    # 구분할 수 있는 상태, 필요한 스프라이트, 스프라이트 제작 규격
 ├── docs/demo.gif            # README 맨 위의 데모 화면 (화면 녹화를 1.5배속 GIF로 변환)
@@ -201,7 +201,7 @@ claude plugin test .        # 테스트
 
 - `tsc`는 `.claude-plugin/types/`가 있어야 동작합니다. 이 폴더는 Claude Code가 대화형 세션에서 `--plugin-dir`로 이 mod를 로드할 때 만들어 주며, git에는 포함되지 않습니다. 폴더가 없다면 `claude --plugin-dir .`로 한 번 실행했다가 종료합니다. TypeScript는 `target: es2023`을 지원하는 버전이어야 합니다(6.0.3은 통과했고, 5.2.2는 이 target을 거부했습니다).
 - `claude plugin validate .`의 출력에서 `hooks:`, `calls:`, `env reads:`, `state reads:`, `state writes:` 행을 확인합니다. 새로운 `$` 호출이나 환경 변수 읽기를 추가했다면 README의 "이 mod가 컴퓨터에서 하는 일" 절도 함께 고칩니다.
-- `claude plugin test .`는 `tests/pane-mod.test.tsx`를 실행하며, 지금은 84개가 모두 통과합니다. 테스트 하나의 시간 제한은 5초입니다.
+- `claude plugin test .`는 `tests/pane-mod.test.tsx`를 실행하며, 지금은 86개가 모두 통과합니다. 테스트 하나의 시간 제한은 5초입니다.
 
 ### 정적 분석 규칙
 

@@ -127,6 +127,15 @@ export const parentOf = (path: string): string => {
 /** The last segment of a path. */
 export const baseName = (path: string): string => path.replace(/\/+$/, '').split('/').pop() ?? path
 
+/**
+ * Whether a folder is a data folder Claude Code names for this plugin:
+ * `pane-mod-<marketplace>`, `pane-mod-inline` for a `--plugin-dir` copy.
+ * `CLAUDE_PLUGIN_DATA` is read from the environment Claude Code was started
+ * in, which can carry another plugin's (a shell Claude Code's Bash tool runs
+ * does).
+ */
+export const isOwnData = (path: string): boolean => (path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? '').startsWith('pane-mod-')
+
 /** Counts the commands a settings `hooks` block registers, across every event and matcher. */
 export const countHooks = (hooks: unknown): number => {
   if (typeof hooks !== 'object' || hooks === null) return 0

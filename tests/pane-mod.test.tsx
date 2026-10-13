@@ -3,7 +3,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { MockClock, TestBody } from 'claude-code/testing'
 
 import { agentCounts, audioMime, bar, barGlyphOf, colorOf, paneOrderOf, modelName, cacheHitOf, cellsOf, clipCells, logWheel, wrapCells, colorSaid, countHooks, dateOf, duration, folderOf, frameAt, framesFor, logFrom, logMatches, logMarkdown, markReached, NO_FRAMES, promptOf, standing, pruneLogs, renameSaid, stampOf, effortGauge, effortGuess, effortLevelOf, effortSaid, gitDirOf, headName, isWorktreeDir, mcpServersOf, memoryOf, minutesToFull, nextFrame, oneLine, soundFiles, spriteFrames, stateOf, targetOf, tint, tokensShort, toolKind, toolsOf, until, withoutFrame } from '../hooks/format'
-import { countTool, errorLine, keptFileOf, limitSetting, LOG_CAPS, mcpNameOf, OTHER_TOOLS, partText, recentOf, sealedOf, sweepOf, toolsLine, withOnce } from '../hooks/format'
+import { countTool, errorLine, isOwnData, keptFileOf, limitSetting, LOG_CAPS, mcpNameOf, OTHER_TOOLS, partText, recentOf, sealedOf, sweepOf, toolsLine, withOnce } from '../hooks/format'
 import { clipStart, diffCounts, diffOf, hunksOf, lineDiff, linesOf, pathIn, unifiedOf } from '../hooks/format'
 
 const START = { cwd: '/w/app', surface: 'terminal', isInteractive: true } as const
@@ -1504,6 +1504,19 @@ test("each session keeps its own log in a file of the plugin's data folder, name
   expect(ui.ran).toEqual([])
 })
 
+test("a CLAUDE_PLUGIN_DATA that names another plugin's folder is passed over: the log is kept in this plugin's own, under HOME", async ($, on) => {
+  const ui = paneWorld()
+  const other = '/Users/me/.claude/plugins/data/codex-openai-codex'
+
+  working(on, ui, { ...GHOSTTY, CLAUDE_PLUGIN_DATA: other, HOME: '/Users/me' })
+  await $.session.start(START)
+  await $.turn.start({ text: 'first task', turnId: 'turn_1' })
+  await $.turn.complete({ ...TURN, durationMs: 5_000, reason: 'answer' })
+
+  expect(savedOf(ui, 'sess-A')).toMatchObject({ entries: [{ text: 'first task', outcome: 'answer' }] })
+  expect(Object.keys(ui.files).filter(path => path.startsWith(other))).toEqual([])
+})
+
 test('a session taken up again (-c, --resume) finds its own log; another session sees none of it', async ($, on) => {
   const ui = paneWorld()
 
@@ -2458,6 +2471,19 @@ test('a search finds a line by every word of it, in any case, in what was asked 
   expect(['', '  ', 'BUG', 'parser.ts', 'npm', 'grep', 'code-review', 'get_issue', 'explore callers', 'exit code', 'fix   npm']
     .every(query => logMatches(line, query))).toBe(true)
   expect(['bugs', 'fix login', 'Edit'].some(query => logMatches(line, query))).toBe(false)
+})
+
+test("a data folder is taken as this plugin's only where Claude Code would name it for this plugin, from any marketplace or --plugin-dir", () => {
+  expect(
+    [
+      '/Users/me/.claude/plugins/data/pane-mod-pane-mod',
+      '/Users/me/.claude/plugins/data/pane-mod-inline/',
+      'C:\\Users\\me\\.claude\\plugins\\data\\pane-mod-fork',
+      '/Users/me/.claude/plugins/data/codex-openai-codex',
+      '/Users/me/pane-mod',
+      '',
+    ].map(path => isOwnData(path)),
+  ).toEqual([true, true, true, false, false, false])
 })
 
 test("a kept file's name says whose log it is and which part; the oldest lines are sealed 200 to a file, the newest file keeping one to 200", () => {
