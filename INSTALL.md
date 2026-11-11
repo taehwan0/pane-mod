@@ -6,7 +6,7 @@
 
 | 항목 | 확인 방법 | 조건 |
 |---|---|---|
-| Claude Code | `claude --version` | 2.1.292 이상에서 만들고 시험했습니다. 버전이 낮으면 `claude update`로 올립니다. `claude` 명령이 없으면 설치를 멈추고 <https://claude.com/claude-code> 안내를 따릅니다. |
+| Claude Code | `claude --version` | 2.1.319 이상이 필요하며, 2.1.322에서 시험했습니다. 버전이 낮으면 `claude update`로 올립니다. `claude` 명령이 없으면 설치를 멈추고 <https://claude.com/claude-code> 안내를 따릅니다. |
 | 터미널 | 사용 중인 터미널 확인 | 스프라이트는 kitty graphics protocol의 유니코드 placeholder 방식을 지원하는 터미널에서만 그림으로 보입니다. Ghostty와 cmux에서 확인했고, 공식 문서에 따르면 kitty 0.28 이상에서도 그려집니다. **Orca에서는 현재 버전(1.4.221) 기준으로 보이지 않습니다**(7장 참고). 그림을 그릴 수 없는 터미널에서는 pane-mod가 스프라이트 자리를 스스로 없애고 글자 정보만 표시합니다. |
 | 기존 statusLine | `~/.claude/settings.json`의 `statusLine` | pane-mod는 statusLine을 대체하려고 만들었습니다. 두 가지를 함께 쓸지 정합니다. |
 | 스프라이트와 소리 파일 | 직접 준비한 폴더 | 저장소에는 이 파일들이 들어 있지 않습니다. 파일이 없어도 설치와 실행에는 문제가 없으며, 스프라이트와 소리만 생략됩니다. 직접 준비한 폴더가 있다면 2장의 `spriteDir`, `soundDir`에 그 경로를 지정합니다. |
@@ -14,7 +14,7 @@
 
 ## 2. 설치 중에 정할 설정
 
-설치 화면이 아래 스물아홉 항목을 묻습니다. 항목은 세 묶음으로 나뉩니다. 무엇을 화면에 노출할지, 스프라이트와 소리를 어떻게 쓸지, 승인 창 아래에 한 줄을 붙일지를 차례로 정합니다. 답하지 않은 항목은 기본값을 씁니다. 셸에서 설치할 때는 고른 값마다 `--config 키=값`으로 넘깁니다.
+설치 화면이 아래 서른 항목을 묻습니다. 항목은 세 묶음으로 나뉩니다. 무엇을 화면에 노출할지, 스프라이트와 소리를 어떻게 쓸지, 승인 창 아래에 한 줄을 붙일지를 차례로 정합니다. 답하지 않은 항목은 기본값을 씁니다. 셸에서 설치할 때는 고른 값마다 `--config 키=값`으로 넘깁니다.
 
 ### 2-1. 노출할 항목
 
@@ -37,9 +37,10 @@
 | `logDays` | `0`, 1 이상 | `14` | 마지막으로 저장한 뒤 로그를 보관하는 날수입니다. `0`이면 기간을 제한하지 않습니다. 로그 파일의 위치와 정리 방식은 README의 "로그 보관"에 있습니다. |
 | `agents` | `summary`, `list`, `off` | `summary` | HUD에 서브에이전트를 표시하는 방식입니다. `summary`는 상태별 개수를 한 줄로 보여 줍니다(`↳ subagents 5  ● running 2  ◐ waiting 1  ✓ done 1  ✗ failed 1`). `list`는 에이전트마다 한 줄씩 보여 줍니다(이름과 타입, 작업 설명, 경과 시간, 도구 호출 수, 현재 도구). `off`는 표시하지 않습니다. 어느 쪽을 골라도 입력창 아래의 Claude Code 작업 목록은 그대로 표시됩니다. mod가 그 목록을 제어할 수 없기 때문입니다. |
 | `paneOrder` | `tasks`, `agents`, `context`, `recent`, `changes`, `log`를 쉼표나 공백으로 구분한 순서 | `tasks,agents,context,recent,changes,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙이므로 순서 때문에 카드가 사라지지는 않습니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없고, 버튼과 `o` / `n` 키로만 넘깁니다. |
-| `sessionColor` | `auto`, 테마 키, `#rrggbb` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 따르고, 고른 색이 없으면 흐린 노랑을 씁니다. 다른 값을 적으면 `/color`와 관계없이 그 색으로 고정합니다. |
-| `modelColor` | 테마 키, `#rrggbb` | `claude` | 모델 카드의 테두리 색입니다. |
-| `cardColor` | 테마 키, `#rrggbb` | `subtle` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. |
+| `colorTheme` | `default`, `darcula`, `one-dark`, `github-dark` | `default` | HUD의 색 테마입니다. WORKING 배지, 프로젝트와 branch, 게이지, effort, 권한 모드, 서브에이전트·작업·로그의 표시, 바뀐 줄 수의 색과, 아래 테두리 설정이 `auto`인 카드의 테두리를 함께 바꿉니다. 테마별 색은 README의 "색 테마"에 있습니다. |
+| `sessionColor` | `auto`, 테마 키, `#rrggbb` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 따르고, 고른 색이 없으면 색 테마의 강조색(기본 테마에서는 노랑)을 흐리게 씁니다. 다른 값을 적으면 `/color`와 관계없이 그 색으로 고정합니다. |
+| `modelColor` | `auto`, 테마 키, `#rrggbb` | `auto` | 모델 카드의 테두리 색입니다. `auto`는 색 테마의 색(기본 테마에서는 Claude 주황)을 따르고, 다른 값을 적으면 테마와 관계없이 그 색으로 고정합니다. |
+| `cardColor` | `auto`, 테마 키, `#rrggbb` | `auto` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. `auto`는 색 테마의 색(기본 테마에서는 회색)을 따르고, 다른 값을 적으면 테마와 관계없이 그 색으로 고정합니다. |
 | `barFilled` | 폭이 한 칸인 문자 하나 | `▰` | 모든 게이지(effort, ctx, 5h, 7d)에서 채워진 칸을 그리는 문자입니다. 이모지, 전각 문자, 공백, 제어 문자는 받지 않습니다. |
 | `barEmpty` | 폭이 한 칸인 문자 하나 | `▱` | 모든 게이지에서 빈칸을 그리는 문자입니다. 조건은 `barFilled`와 같습니다. |
 
@@ -140,7 +141,7 @@ claude --plugin-dir ~/work/pane-mod --settings ~/.config/pane-mod/dev-settings.j
 
    ```
    ❯ pane-mod@pane-mod
-     Version: 1.1.0
+     Version: 1.2.0
      Scope: user
      Status: ✔ enabled
    ```
@@ -176,7 +177,8 @@ pane-mod로 statusLine을 대체하려면 `~/.claude/settings.json`에서 `statu
 | 소리가 나지 않음 | 소리 폴더(`soundDir`, 비워 두었다면 플러그인 폴더의 `assets/sounds/`)의 `working/`, `idle/`에 소리 파일이 있는지, `sound`가 `true`인지 확인합니다. macOS가 아니면 소리는 나지 않습니다. |
 | Orca에서 스프라이트가 안 보임 | Orca 쪽 제약이라 지금은 해결할 수 없습니다. Orca 1.4.221의 터미널(xterm.js)에서 확인한 결과, kitty 이미지를 직접 배치하는 방식(`a=T`)은 그리지만 ① Claude Code가 보내는 kitty 그래픽 지원 질의에 응답하지 않고 ② Claude Code가 그림을 그리는 유니코드 placeholder 방식(`U=1`, `U+10EEEE`)을 지원하지 않습니다(□로 표시됨). pane-mod는 이 경우 스프라이트를 숨기고 글자 HUD만 표시합니다. Orca가 두 기능을 지원하면 설정 변경 없이 스프라이트가 나타납니다. |
 | HUD가 두 개이거나 겹쳐 보임 | 같은 band에 그리는 다른 mod(개발용 mod 포함)가 함께 로드된 경우입니다. 하나만 남깁니다. |
-| 서브에이전트가 두 번 보임 | 입력창 아래 목록은 Claude Code 자체 목록입니다. HUD 쪽을 `agents=summary`나 `off`로 바꿉니다. |
+| 서브에이전트가 두 번 보임 | 입력창 아래 서브에이전트 패널은 Claude Code가 그리는 목록이고, pane-mod는 그 행의 내용만 바꿉니다. HUD 쪽을 `agents=summary`로 바꾸거나, 패널의 행도 기본 형식으로 되돌리려면 `agents=off`로 바꿉니다. |
+| 서브에이전트 패널의 행이 pane-mod의 형식으로 바뀌지 않음 | agent teams의 teammate 행은 Claude Code가 이 설정을 적용하지 않으므로 기본 형식으로 남습니다. 일반 서브에이전트의 행이 바뀌지 않으면 Claude Code가 2.1.319 이상인지, `agents`가 `off`가 아닌지, 사용자 설정(`~/.claude/settings.json` 등)에 `subagentStatusLine`이 따로 있지 않은지 확인합니다. 사용자 설정의 값이 플러그인의 값보다 우선합니다. 플러그인의 데이터 폴더가 아직 없으면 Claude Code가 이 스크립트를 실행하지 않습니다. pane-mod가 로그나 행을 처음 쓸 때 이 폴더가 생기므로, 잠시 뒤에 다시 확인합니다. |
 
 ### 터미널이 kitty 그래픽을 그리는지 확인하는 명령
 
@@ -191,7 +193,7 @@ python3 -c "import base64,sys;d=base64.b64encode(open('$HOME/sprite.png','rb').r
 AI에게 "설치해 줘"라고 맡길 때 AI가 지켜야 할 규칙입니다. 단계별 절차는 [AGENTS.md](AGENTS.md)의 "설치를 요청받았을 때"에 있습니다.
 
 1. **요청받았을 때만 설치합니다.** 이 문서를 읽었다는 사실만으로 설치하지 않습니다.
-2. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.1.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
+2. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.2.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
 3. **1장의 확인 항목을 점검합니다.** `claude` 명령이 없으면 멈추고, Claude Code를 대신 설치하지 않습니다.
 4. **2장의 설정을 세 묶음으로 나눠 사용자에게 묻습니다.** 노출할 항목(2-1), 스프라이트와 소리, 직접 준비한 폴더(2-2), 알림(2-3)을 기본값과 함께 보여 주고, 바꿀 항목만 답받습니다. `agents`(`summary` / `list` / `off`)와 노출할 섹션은 반드시 묻습니다. 사용자가 답하지 않은 항목은 기본값을 씁니다.
 5. **방법 B의 셸 명령으로 설치하고, 고른 값을 `--config`로 넘깁니다.** `/plugin …`과 `/plugin configure …`는 사람이 입력창에 입력하는 명령이므로 AI가 도구로 실행할 수 없습니다. 필요하면 사용자에게 입력해 달라고 요청합니다.

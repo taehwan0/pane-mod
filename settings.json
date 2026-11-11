@@ -1,0 +1,6 @@
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-rows.sh\""
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "pane-mod",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Claude Code's HUD in a side pane (or a band above the prompt, or one line under it): the project, model and effort, usage and limits, context, tasks, subagents and a searchable work log, with a sprite and sounds of your own if you give it some",
   "author": {
     "name": "taehwan0"
@@ -163,23 +163,35 @@
       "description": "The cards under the pane's first card and model card, top to bottom: tasks, agents, context, recent, changes and log, separated by commas or spaces. A name left out follows in the default order and an unknown name is ignored, so ordering never hides a card (the show settings do). The wheel pages the log only while log is last; elsewhere its buttons and the keys o and n still do",
       "default": "tasks,agents,context,recent,changes,log"
     },
+    "colorTheme": {
+      "type": "string",
+      "title": "Color theme",
+      "description": "The colors the HUD draws in: the working badge, the project and branch, the gauges, effort, the permission mode, the marks of subagents, tasks and log lines, the lines a change adds and removes, and the cards whose color setting is auto. default: the HUD's own. darcula, one-dark, github-dark: the tones of IntelliJ's Darcula, Atom's One Dark and GitHub's dark theme. Every theme keeps what a color means (green to spare, red nearly full)",
+      "options": [
+        "default",
+        "darcula",
+        "one-dark",
+        "github-dark"
+      ],
+      "default": "default"
+    },
     "sessionColor": {
       "type": "string",
       "title": "First card's color",
-      "description": "The border of the pane's first card and the session's name. auto: the color /color set, else a dim yellow. Otherwise a theme key (such as claude, subtle, success, warning, error, suggestion, permission, planMode, autoAccept) or a #rrggbb hex, used whatever /color says. An invalid value counts as auto",
+      "description": "The border of the pane's first card and the session's name. auto: the color /color set, else the color theme's accent, dim. Otherwise a theme key (such as claude, subtle, success, warning, error, suggestion, permission, planMode, autoAccept) or a #rrggbb hex, used whatever /color says. An invalid value counts as auto",
       "default": "auto"
     },
     "modelColor": {
       "type": "string",
       "title": "Model card's color",
-      "description": "The border of the pane's model card: a theme key (such as claude, subtle, success, warning, error, suggestion) or a #rrggbb hex. An invalid value counts as claude",
-      "default": "claude"
+      "description": "The border of the pane's model card: auto (the color theme's, Claude's orange in the default theme), a theme key (such as claude, subtle, success, warning, error, suggestion) or a #rrggbb hex. An invalid value counts as auto",
+      "default": "auto"
     },
     "cardColor": {
       "type": "string",
       "title": "Other cards' color",
-      "description": "The border of the pane's other cards (tasks, subagents, context, recent, log): a theme key (such as subtle, claude, success, warning, error, suggestion) or a #rrggbb hex. An invalid value counts as subtle",
-      "default": "subtle"
+      "description": "The border of the pane's other cards (tasks, subagents, context, recent, changes, log): auto (the color theme's, the theme's gray in the default theme), a theme key (such as subtle, claude, success, warning, error, suggestion) or a #rrggbb hex. An invalid value counts as auto",
+      "default": "auto"
     },
     "barFilled": {
       "type": "string",
