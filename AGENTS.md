@@ -14,14 +14,14 @@ pane-mod는 Claude Code의 **mod**(함수형 hook 플러그인)입니다. 오른
 
 설치는 사용자의 Claude Code 설정을 바꿉니다. 이 문서를 읽었다는 이유만으로 설치하지 말고, 사용자가 설치를 요청했을 때만 아래 순서를 따릅니다. 각 설정의 자세한 설명은 [INSTALL.md](INSTALL.md) 2장에 있습니다.
 
-1. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.1.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
-2. **Claude Code를 확인합니다.** `claude --version`을 실행합니다. 2.1.292 이상이어야 하며, 버전이 낮으면 `claude update`를 제안합니다. `claude` 명령이 없으면 여기서 멈추고 <https://claude.com/claude-code>를 안내합니다. Claude Code를 대신 설치하지 않습니다.
+1. **무엇을 설치하는지 먼저 한 줄로 알립니다.** 예: "pane-mod(v1.2.0)를 user 범위로 설치합니다. 오른쪽 pane(화면이 pane을 붙일 수 없으면 입력창 위)에 HUD가 생기고, 스프라이트 폴더를 지정하면 스프라이트가 표시됩니다."
+2. **Claude Code를 확인합니다.** `claude --version`을 실행합니다. 2.1.319 이상이어야 하며, 버전이 낮으면 `claude update`를 제안합니다. `claude` 명령이 없으면 여기서 멈추고 <https://claude.com/claude-code>를 안내합니다. Claude Code를 대신 설치하지 않습니다.
 3. **이미 설치되어 있는지 확인합니다.** `claude plugin list`에 `pane-mod@pane-mod`가 있으면 다시 설치하지 않습니다. 상태가 disabled이면 한 줄로 알린 뒤 `claude plugin enable pane-mod@pane-mod`를 실행합니다. 설정만 바꾸려는 경우에는 아래 "설정 변경을 요청받았을 때"를 따릅니다.
 4. **설정을 고르게 합니다.** 아래 세 묶음을 기본값과 함께 한 번에 보여 주고, 바꿀 항목만 답받습니다. 노출할 항목(첫 번째 묶음)은 반드시 묻습니다. 사용자가 답하지 않은 항목은 기본값을 씁니다.
 
    | 묶음 | 키와 기본값 |
    |---|---|
-   | 노출할 항목 (INSTALL.md 2-1) | `layout=auto`, `bandWithPane=off`, `showSession`·`showNow`·`showTasks`·`showModel`·`showUsage`·`showTotals`·`showRecent`·`showChanges`·`showLog`=`true`, `showContext=false`, `agents=summary`, `logTurns=50`, `logSessions=30`, `logDays=14`(셋 다 `0`이면 제한 없음), `paneOrder=tasks,agents,context,recent,changes,log`, `sessionColor=auto`, `modelColor=claude`, `cardColor=subtle`, `barFilled=▰`, `barEmpty=▱` |
+   | 노출할 항목 (INSTALL.md 2-1) | `layout=auto`, `bandWithPane=off`, `showSession`·`showNow`·`showTasks`·`showModel`·`showUsage`·`showTotals`·`showRecent`·`showChanges`·`showLog`=`true`, `showContext=false`, `agents=summary`, `logTurns=50`, `logSessions=30`, `logDays=14`(셋 다 `0`이면 제한 없음), `paneOrder=tasks,agents,context,recent,changes,log`, `colorTheme=default`, `sessionColor`·`modelColor`·`cardColor`=`auto`, `barFilled=▰`, `barEmpty=▱` |
    | 스프라이트와 소리 (INSTALL.md 2-2) | `sprite=true`, `animate=true`, `spriteSource=auto`, `sound=true`, `spriteDir`·`soundDir`=빈 값(플러그인 폴더의 `assets/`를 찾으며, 저장소에는 들어 있지 않음) |
    | 알림 (INSTALL.md 2-3) | `alerts=true` |
 
@@ -63,8 +63,9 @@ pane-mod의 설정은 모두 `plugin.json`의 `userConfig`에 있습니다. 설�
    | 소리 끄기, 승인 창 아래 한 줄 끄기 | `sound=false`, `alerts=false` |
    | 직접 준비한 스프라이트나 소리 폴더 쓰기, 원래 폴더로 되돌리기 | `spriteDir` / `soundDir`에 절대 경로, 되돌릴 때는 빈 문자열(`""`) |
    | pane 아래쪽 카드의 순서 바꾸기(예: log를 tasks 위로) | `paneOrder`에 `tasks`, `agents`, `context`, `recent`, `changes`, `log`를 원하는 순서로 적은 값(예: `log,tasks`). 적지 않은 카드는 기본 순서대로 뒤에 붙습니다. `log`가 마지막이 아니면 휠로 로그를 넘길 수 없다는 점을 함께 알립니다. |
+   | HUD의 색 테마 바꾸기(Darcula, One Dark, GitHub Dark), 원래 색으로 되돌리기 | `colorTheme=darcula` / `one-dark` / `github-dark`, 되돌릴 때는 `default`. 테두리 설정(`modelColor` 등)에 색을 적어 두었다면 그 카드는 테마를 따르지 않는다는 점을 함께 알립니다. |
    | 첫 카드의 색을 `/color`와 관계없이 고정하기, `/color`를 다시 따르기 | `sessionColor`에 테마 키나 `#rrggbb`, 되돌릴 때는 `auto` |
-   | 모델 카드나 나머지 카드의 테두리 색 바꾸기 | `modelColor` / `cardColor`에 테마 키나 `#rrggbb`(기본값은 `claude` / `subtle`) |
+   | 모델 카드나 나머지 카드의 테두리 색 바꾸기 | `modelColor` / `cardColor`에 테마 키나 `#rrggbb`, 색 테마를 다시 따르게 할 때는 `auto` |
    | 게이지 문자 바꾸기 | `barFilled` / `barEmpty`에 폭이 한 칸인 문자 하나(기본값은 `▰` / `▱`) |
 
 2. **현재 값을 확인합니다.** `claude plugin configure pane-mod@pane-mod --json`을 실행합니다. `inputs`에는 기본값까지 반영된 현재 값이, `choices`에는 고를 수 있는 값이 있습니다. 바꿀 키, 지금 값, 새 값을 한 줄로 알립니다(예: "`showContext`: false → true").
@@ -104,7 +105,8 @@ mod를 만들거나 고칠 때는 아래 공식 문서를 기준으로 삼습니
 
 - 페이지 URL 끝에 `.md`를 붙이면 Markdown 원문을 받을 수 있습니다. 전체 문서의 색인은 <https://code.claude.com/docs/llms.txt>에 있습니다.
 - 이벤트와 메서드는 Claude Code 버전마다 바뀔 수 있습니다. 문서와 타입 선언이 서로 다르면 **지금 설치된 Claude Code가 만들어 준 타입 선언**(`.claude-plugin/types/claude-code/index.d.ts`)을 따릅니다. 이 파일은 매우 크므로 `'tool.call'`, `Pane: {`처럼 찾으려는 이름으로 검색한 뒤 해당 선언만 읽습니다.
-- 이 문서의 내용은 2026-10-10에 Claude Code 2.1.296 기준으로 위 문서들과 대조했습니다.
+- 서브에이전트 패널의 행(`subagentStatusLine`)은 mod가 아닌 설정 항목이므로 [Customize your status line](https://code.claude.com/docs/en/statusline)의 "Subagent status lines"를 기준으로 삼습니다. 스크립트가 받는 입력(`tasks`의 각 필드)과 출력 형식이 여기에 있습니다.
+- 이 문서의 내용은 2026-11-10에 Claude Code 2.1.322 기준으로 위 문서들과 대조했습니다.
 
 ## 구조
 
@@ -137,15 +139,17 @@ mod를 이해하는 데 필요한 개념은 다음과 같습니다.
 ```text
 pane-mod/
 ├── .claude-plugin/
-│   ├── plugin.json          # 이름, 버전(1.1.0), userConfig 29개, types 경로
+│   ├── plugin.json          # 이름, 버전(1.2.0), userConfig 30개, types 경로
 │   ├── marketplace.json     # 이 폴더를 마켓플레이스로 등록합니다 (source: "./").
 │   └── types/               # Claude Code가 mod를 로드할 때 만드는 타입 선언 (git 제외)
 ├── hooks/
 │   ├── hooks.json           # { "modules": ["./register.tsx"] }
 │   ├── register.tsx         # hooks module: 데이터 수집, asset 폴더 탐색, 스프라이트와 소리, 알림, 작업 로그, band와 pane 그리기
-│   └── format.ts            # $를 쓰지 않는 순수 함수: 게이지, 색, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 로그 변환과 로그 줄의 상한(LOG_CAPS), 로그 파일 이름과 보관 한도에 따른 정리 대상(`sweepOf`), `CLAUDE_PLUGIN_DATA`가 이 플러그인의 폴더인지 판정(`isOwnData`), 로그 검색(`logMatches`), 힌트 줄의 한 줄 정보(`hintTail`), 카드 순서와 색·게이지 문자 설정 검사, 줄 단위 diff(`lineDiff`, `hunksOf`, `unifiedOf`, `diffOf`)와 경로 표기(`pathIn`, `clipStart`)
+│   └── format.ts            # $를 쓰지 않는 순수 함수: 게이지, 색, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 로그 변환과 로그 줄의 상한(LOG_CAPS), 로그 줄의 제목(`askedOf`: 작업 알림으로 시작된 턴은 알림의 요약), 색 테마의 팔레트(`PALETTES`, `colorThemeOf`, 팔레트를 받는 `tint`·`effortTint`), 로그 파일 이름과 보관 한도에 따른 정리 대상(`sweepOf`), `CLAUDE_PLUGIN_DATA`가 이 플러그인의 폴더인지 판정(`isOwnData`), 로그 검색(`logMatches`), 힌트 줄의 한 줄 정보(`hintTail`), 카드 순서와 색·게이지 문자 설정 검사, 줄 단위 diff(`lineDiff`, `hunksOf`, `unifiedOf`, `diffOf`)와 경로 표기(`pathIn`, `clipStart`), 서브에이전트 패널의 행(`panelRowOf`, `panelRowsText`)
 ├── types/index.d.ts         # 공유 타입과 $.state 계약 (snap, frame, logOffset, logOpen, logQuery, diffOpen)
-├── tests/pane-mod.test.tsx  # claude-code/testing 기반 테스트 86개
+├── settings.json            # 플러그인이 켜져 있는 동안 적용되는 설정: subagentStatusLine을 scripts/subagent-rows.sh로 지정합니다.
+├── scripts/subagent-rows.sh # 서브에이전트 패널의 행: 데이터 폴더의 subagents/<세션 ID>.jsonl을 그대로 출력합니다.
+├── tests/pane-mod.test.tsx  # claude-code/testing 기반 테스트 95개
 ├── assets/                  # 선택 사항인 로컬 스프라이트·소리 폴더 (git 제외, 저장소에는 없음. 아래 "asset" 참고)
 ├── docs/sprite-states.md    # 구분할 수 있는 상태, 필요한 스프라이트, 스프라이트 제작 규격
 ├── docs/demo.gif            # README 맨 위의 데모 화면 (화면 녹화를 1.5배속 GIF로 변환)
@@ -162,10 +166,10 @@ pane-mod/
 
 1. **상수**: 갱신 주기(`FRAME_MS` 80ms, `FAST_MS` 2초, `SLOW_MS` 15초), 스프라이트 크기, 로그 보관(`logTurns`·`logSessions`·`logDays`의 기본값, 로그 파일 폴더 `KEPT_FOLDER`와 파일 하나에 봉인하는 줄 수 `LOG_PART`, 파일을 지우는 `REMOVER`), 알림 기준(`ALERT_MARKS`) 등을 정의합니다. 로그 줄 하나에 담는 항목의 개수와 길이 상한은 `format.ts`의 `LOG_CAPS`에 있습니다.
 2. **`$.state` atom**: `snap`, `frame`, `logOffset`, `logOpen`, `logQuery`(로그 검색어), `diffOpen`(diff를 보고 있는 파일과 전체 보기 여부)을 정의합니다. 타입은 `types/index.d.ts`의 `PluginState['pane-mod']`에 선언되어 있습니다.
-3. **모듈 변수**: 설정값, 레이아웃 상태, 진행 중인 턴(`tally`: 개수, 도구별 호출 수, skill, MCP 도구, 서브에이전트, 실패한 호출, 승인 요청, 거부), 턴이 끝난 뒤에도 실행 중인 서브에이전트(`pendingAgents`), 파일을 고친 가장 최근 턴이 고친 파일(`changes`: 고치기 전과 후의 내용, 추가·삭제한 줄 수), 알림, 작업 로그 등을 담습니다. mod를 다시 로드하면 초기화됩니다.
-4. **`$`를 받는 최상위 함수**: 수집(`gatherSlow`, `gatherFast`, `refresh`), asset 탐색(`findAssets`), 스프라이트(`sourceOf`, `showFrame`, `setMotion`, `startPlayer`), 소리(`soundsOf`, `clipOf`, `playFor`), 로그(`syncLog`, `saveLog`: 세션 파일을 쓰고 보관 한도를 넘은 파일을 정리, `removeKept`: `/bin/rm`으로 지우고 실행할 수 없으면 파일을 비움, `foundLog`·`findLog`: 로그 검색, `openLogFile`), 변경 파일(`noteChange`: Edit·Write의 결과와 다시 읽은 파일로 기록, `diffShown`: 그릴 diff를 한 번만 계산, `openDiff`·`closeDiff`), 알림(`raiseAlert`, `noteDialog`), pane(`openPane`, `closePane`, `applyLayout`)으로 나뉩니다.
+3. **모듈 변수**: 설정값, 레이아웃 상태, 진행 중인 턴(`tally`: 개수, 도구별 호출 수, skill, MCP 도구, 서브에이전트, 실패한 호출, 승인 요청, 거부), 턴이 끝난 뒤에도 실행 중인 서브에이전트(`pendingAgents`), 파일을 고친 가장 최근 턴이 고친 파일(`changes`: 고치기 전과 후의 내용, 추가·삭제한 줄 수), 서브에이전트별 토큰(`agentUsage`: 마지막 요청의 입력과 지금까지의 출력)과 마지막으로 쓴 패널 행(`panelText`, `panelPath`), 알림, 작업 로그 등을 담습니다. mod를 다시 로드하면 초기화됩니다.
+4. **`$`를 받는 최상위 함수**: 수집(`gatherSlow`, `gatherFast`, `refresh`), asset 탐색(`findAssets`), 스프라이트(`sourceOf`, `showFrame`, `setMotion`, `startPlayer`), 소리(`soundsOf`, `clipOf`, `playFor`), 로그(`syncLog`, `saveLog`: 세션 파일을 쓰고 보관 한도를 넘은 파일을 정리, `removeKept`: `/bin/rm`으로 지우고 실행할 수 없으면 파일을 비움, `foundLog`·`findLog`: 로그 검색, `openLogFile`), 변경 파일(`noteChange`: Edit·Write의 결과와 다시 읽은 파일로 기록, `diffShown`: 그릴 diff를 한 번만 계산, `openDiff`·`closeDiff`), 서브에이전트(`noteSpawn`: 끝난 뒤 다시 실행된 서브에이전트는 시간과 호출 수를 새로 셈, `viewAgent`: `$.ui.view`로 transcript 보기, `writePanel`·`dropPanel`: 서브에이전트 패널의 행 파일을 쓰고 세션이 끝날 때 지움), 알림(`raiseAlert`, `noteDialog`), pane(`openPane`: `backgroundColor: 'transparent'`로 열어 터미널 배경을 그대로 씀, `closePane`, `applyLayout`)으로 나뉩니다.
 5. **`register`**: `options`를 모듈 변수에 반영하고 hook을 등록합니다.
-6. **그리기 함수**: band와 pane이 함께 쓰는 표시(`gauge`: 두 색 `▰▱` 게이지(문자는 `barFilled`·`barEmpty` 설정), `effortMark`, `statusMark`: ` ● WORKING ` 배지), band의 행(`placeRow`, `modelRow`, `usageRow`, `contextRow`, `statusRow`, `agentList`, `compactRow`), pane의 카드(`identityCard`: 오른쪽에 스프라이트를 품은 pane 폭의 첫 카드, `modelCard`, `tasksCard`, `agentsCard`, `contextCard`, `recentCard`: 최근에 쓴 skill과 MCP 도구, `changesCard`: 최근 턴이 고친 파일, `logSection`)와, 카드 대신 pane 전체에 그리는 `diffView`를 만듭니다. 모델 카드 아래의 카드는 Pane의 `ui.render` hook이 `paneOrder` 순서로 늘어놓습니다. 카드는 `Box`의 `borderStyle: 'round'`로 그리고 테두리 색은 `sessionColor`·`modelColor`·`cardColor` 설정(모듈 변수 `sessionBorder`, `modelBorder`, `cardBorder`)을 따르며, 카드 안의 행은 `columns - CARD_INSET` 폭으로 그립니다.
+6. **그리기 함수**: band와 pane이 함께 쓰는 표시(`gauge`: 두 색 `▰▱` 게이지(문자는 `barFilled`·`barEmpty` 설정), `effortMark`, `statusMark`: ` ● WORKING ` 배지), band의 행(`placeRow`, `modelRow`, `usageRow`, `contextRow`, `statusRow`, `agentList`: `AgentView`를 받으면 transcript를 볼 수 있는 행(`AgentRow.isViewable`: 끝나지 않았고, 자기 tmux pane에서 도는 teammate가 아닌 것)마다 transcript를 여는 `Button`, `compactRow`), pane의 카드(`identityCard`: 오른쪽에 스프라이트를 품은 pane 폭의 첫 카드, `modelCard`, `tasksCard`, `agentsCard`, `contextCard`, `recentCard`: 최근에 쓴 skill과 MCP 도구, `changesCard`: 최근 턴이 고친 파일, `logSection`)와, 카드 대신 pane 전체에 그리는 `diffView`를 만듭니다. 모델 카드 아래의 카드는 Pane의 `ui.render` hook이 `paneOrder` 순서로 늘어놓습니다. 카드는 `Box`의 `borderStyle: 'round'`로 그리고 테두리 색은 `sessionColor`·`modelColor`·`cardColor` 설정(모듈 변수 `sessionBorder`, `modelBorder`, `cardBorder`)을 따르며, 설정이 `auto`이면 색 테마(모듈 변수 `palette`)의 색을 씁니다. 그 밖의 색도 모두 `palette`에서 가져오며, 상태 표시(`STATE_MARK`, `TASK_MARK`, `OUTCOME_MARK`, `MODE_TONE`)는 색 대신 팔레트의 역할 이름(`Tone`)을 적고 `toneOf`로 색을 얻습니다. 카드 안의 행은 `columns - CARD_INSET` 폭으로 그립니다.
 
 HUD에 표시하는 값은 다음 순서로 갱신됩니다. `session.start`는 먼저 `findAssets`로 스프라이트 폴더의 프레임 목록을 만들고, 2초 주기의 타이머를 등록합니다. 그러면 `refresh`가 값을 수집해서 `Snapshot` 하나로 묶고 `$.state`의 `snap`에 씁니다. `snap`이 바뀌면 이 값을 읽는 `ui.render` hook이 band와 pane을 다시 그립니다. 스프라이트는 이와 별도로 80ms 주기의 타이머가 `$.ui.blit`을 호출해서 프레임 그림만 교체합니다.
 
@@ -174,7 +178,7 @@ HUD에 표시하는 값은 다음 순서로 갱신됩니다. `session.start`는 
 | 역할 | hook |
 |---|---|
 | 시작과 설정 | `session.start`(asset 폴더 탐색, 타이머 등록, `/pane-mod` 명령 등록), `classic.SessionStart`(세션 이름), `prompt.compose`(출력 스타일), `classic.UserPromptSubmit`(권한 모드, 세션 이름) |
-| 턴과 스프라이트 | `turn.start`·`turn.complete`(working과 idle 전환, 작업 로그 기록, 토큰 합계, 서브에이전트가 끝난 방식), `session.end`(진행 중인 턴을 중단된 줄로 저장), `turn.step`(effort), `tool.call`(지금 실행 중인 도구, 턴별 작업 집계: 도구별 호출 수, skill, MCP 도구, 작업 목록, Edit·Write로 고친 파일), `agent.spawn`(서브에이전트, 턴 로그의 서브에이전트 목록) |
+| 턴과 스프라이트 | `turn.start`·`turn.complete`(working과 idle 전환, 작업 로그 기록, 토큰 합계, 서브에이전트가 끝난 방식. `turn.start`는 2.1.299부터 서브에이전트와 teammate의 턴에도 발생하므로 `e.agentId`가 있는 턴은 그대로 통과시킵니다), `session.end`(진행 중인 턴을 중단된 줄로 저장, 서브에이전트 패널의 행 파일 삭제), `turn.step`(effort, 서브에이전트별 토큰), `tool.call`(지금 실행 중인 도구, 턴별 작업 집계: 도구별 호출 수, skill, MCP 도구, 작업 목록, Edit·Write로 고친 파일), `agent.spawn`(서브에이전트, 턴 로그의 서브에이전트 목록, 끝난 서브에이전트의 `e.resume`이면 행의 시간과 호출 수를 새로 셈. 자기 백그라운드 작업을 기다리다 깨어난 경우도 `e.resume`이지만 이어서 셈) |
 | 명령 출력 행 | `session.append{door=command}`(`/effort`, `/rename`, `/color`가 남기는 행 읽기) |
 | 승인 창 아래 한 줄과 작업 로그 | `classic.PermissionRequest`(승인 대기, 승인 요청 기록), `classic.Notification`(약 6초 뒤의 승인 알림), `classic.PostToolUse`, `classic.PostToolUseFailure`(실패한 호출 기록), `classic.PermissionDenied`(거부된 호출 기록), `ui.render{component=ToolProgress}`(승인 뒤 실행이 시작된 호출) |
 | Claude의 작업 목록 | `classic.TaskCreated`, `classic.TaskCompleted` |
@@ -213,7 +217,7 @@ claude plugin test .        # 테스트
 
 - `tsc`는 `.claude-plugin/types/`가 있어야 동작합니다. 이 폴더는 Claude Code가 대화형 세션에서 `--plugin-dir`로 이 mod를 로드할 때 만들어 주며, git에는 포함되지 않습니다. 폴더가 없다면 `claude --plugin-dir .`로 한 번 실행했다가 종료합니다. TypeScript는 `target: es2023`을 지원하는 버전이어야 합니다(6.0.3은 통과했고, 5.2.2는 이 target을 거부했습니다).
 - `claude plugin validate .`의 출력에서 `hooks:`, `calls:`, `env reads:`, `state reads:`, `state writes:` 행을 확인합니다. 새로운 `$` 호출이나 환경 변수 읽기를 추가했다면 README의 "이 mod가 컴퓨터에서 하는 일" 절도 함께 고칩니다.
-- `claude plugin test .`는 `tests/pane-mod.test.tsx`를 실행하며, 지금은 86개가 모두 통과합니다. 테스트 하나의 시간 제한은 5초입니다.
+- `claude plugin test .`는 `tests/pane-mod.test.tsx`를 실행하며, 지금은 95개가 모두 통과합니다. 테스트 하나의 시간 제한은 5초입니다.
 
 ### 정적 분석 규칙
 
@@ -296,6 +300,8 @@ mod는 아래 구조로 asset을 찾습니다. 스프라이트 폴더는 `sprite
 - **언어**: README, INSTALL, CHANGELOG, `docs/`, 이 문서는 한국어 합니다체로 씁니다. README.en.md는 README의 영어판이며, README를 고치면 영어판의 같은 내용도 함께 고칩니다. 코드의 식별자와 주석(JSDoc 포함)은 영어로 쓰고, 기존 주석의 문체를 따릅니다. 커밋 메시지는 `feat: ...`처럼 Conventional Commits 접두어 뒤에 한국어로 씁니다.
 - **pane의 마지막 카드**: 첫 카드와 모델 카드 아래의 카드는 `paneOrder`(`paneOrderOf`가 읽은 순서)대로 그리며, 기본 순서에서는 로그 카드가 pane 트리의 맨 끝에 옵니다. `ui.scroll` hook은 pane 맨 아래의 `logRowsOf`행(테두리 두 줄, 제목, 검색칸, 줄 또는 찾지 못했다는 행, 상세, 버튼 행)을 로그 영역으로 보므로, 로그 카드의 행 구성을 바꾸면 `logRowsOf`도 함께 고칩니다. 다른 카드는 폭에 따라 줄을 바꿔서 높이를 정확히 알 수 없으므로, `paneOrder`의 마지막이 `log`가 아니면 `logHeight`를 0으로 두어 휠은 언제나 pane을 스크롤하고, 로그는 `▲ older` / `▼ newer` 버튼과 `o` / `n` 키로만 넘깁니다. 이 규칙을 유지하려면 새 카드를 추가할 때 `PANE_CARDS`의 기본 순서에서 `log`보다 앞에 넣습니다. diff를 보는 동안에는 로그 카드를 그리지 않으므로 `logHeight`를 0으로 둡니다.
 - **`$`를 쓰는 코드와 순수 함수의 분리**: `$`가 필요 없는 계산은 `hooks/format.ts`에서 export하고, `tests/`에서 직접 단위 테스트합니다.
+- **글자 굵기**: `Text`의 `bold`는 2.1.299부터 deprecated입니다. 굵게 그릴 때는 `weight="semibold"`를 쓰고, 조건에 따라 바꿀 때는 `weight={조건 ? 'semibold' : 'regular'}`처럼 적습니다.
+- **플러그인 루트의 `settings.json`**: Claude Code는 이 파일에서 `agent`와 `subagentStatusLine`만 적용합니다. `subagentStatusLine`의 명령에는 `CLAUDE_PLUGIN_ROOT`와 `CLAUDE_PLUGIN_DATA`가 환경 변수로 주어지며, 스크립트는 `sh`로 실행해서 실행 권한에 기대지 않습니다. 이 `CLAUDE_PLUGIN_DATA`는 플러그인의 실제 데이터 폴더(작업 사본은 `pane-mod-inline`)이지만, mod가 `$.env.get`으로 읽는 값은 Claude Code를 시작한 환경의 값이라서 보통 비어 있고, mod는 `pane-mod-pane-mod`에 씁니다. 그래서 스크립트는 두 폴더를 차례로 찾습니다. 이 패널은 Claude Code가 `local_agent` 작업(일반 서브에이전트)에만 적용하며, agent teams의 teammate 행에는 적용하지 않습니다. 행의 형식을 바꾸면 `panelRowOf`와 그 단위 테스트를 함께 고칩니다.
 - **상태**: 다시 로드한 뒤에도 남아야 하는 값은 `$.state`(세션 동안)나 `$.store`(세션 사이)에 둡니다. 다만 작업 로그처럼 세션 사이에 쌓이는 큰 데이터는 `$.store`의 전체 용량(4 MiB)을 넘을 수 있으므로, 데이터 폴더의 파일(`sessions/`, README "로그 보관")에 둡니다. `$.state`에 키를 추가하면 `types/index.d.ts`의 `PluginState['pane-mod']`에도 선언합니다. 계약에 없는 키는 `validate`가 거부합니다.
 - **설정(`userConfig`)을 추가하거나 바꿀 때**: `plugin.json`, `register`의 `options` 처리, README의 "설정" 표, INSTALL.md 2장의 묶음별 표와 항목 수(지금은 "스물아홉 항목"), 이 문서의 "설치를 요청받았을 때" 4단계 표와 "설정 변경을 요청받았을 때" 1단계 표를 함께 고칩니다. 새 항목은 노출할 항목, 스프라이트와 소리, 알림 중 알맞은 묶음에 넣습니다.
 - **버전을 올릴 때**: 기능을 추가하면 minor 버전을, 문제만 고치면 patch 버전을 올립니다. `plugin.json`의 `version`, INSTALL.md의 버전 표기(4장의 출력 예시, 8장의 안내 문구), 이 문서의 버전 표기(구조 트리, "설치를 요청받았을 때" 1단계)를 함께 고칩니다. CHANGELOG.md 맨 위에는 그 버전의 절을 추가하고, 직전 버전의 태그 뒤에 들어간 변경을 추가, 변경, 수정, 문서로 나눠 적습니다.

@@ -3,8 +3,8 @@ import type { AgentInfo, AudioClip, Elements, EngineInterface, FsEntry, ImageSou
 
 import type { AgentRow, AgentState, Alert, AlertKind, ChangeRow, LogAgent, LogCall, LogEntry, LogError, Outcome, SectionName, SessionColor, Snapshot, TaskItem, Totals } from '../types'
 
-import { addUsage, agentCounts, agentLine, audioMime, bar, BAR_GLYPHS, barGlyphOf, baseName, cacheHitOf, callsLine, cellsOf, cleanOf, clip, clipStart, clockOf, colorOf, colorSaid, countHooks, countTool, dateOf, diffCounts, diffOf, doneOf, duration, effortGauge, effortGuess, effortLevelOf, effortSaid, effortTint, elapsed, errorLine, errorText, folderOf, frameAt, framesFor, gitDirOf, headName, hintTail, isEnded, isOwnData, isWorktreeDir, limitOf, limitSetting, lineDiff, linesOf, LOG_CAPS, logFrom, logMarkdown, logMatches, logWheel, markReached, mcpNameOf, mcpServersOf, memoryOf, minutesToFull, modelBase, modelName, nextFrame, NO_FRAMES, NO_TOTALS, oneLine, OUTCOME_WORDS, PANE_CARDS, paneOrderOf, parentOf, partText, pathIn, promptOf, recentOf, renameSaid, sealedOf, sessionColorOf, soundFiles, spriteFrames, stampOf, standing, STATE_ORDER, stateOf, sweepOf, targetOf, tasksFrom, tasksInOrder, tasksOfTodos, tint, tokensShort, toolKind, toolsLine, toolsOf, totalsFrom, updateTask, withOnce, withoutFrame, wrapCells } from './format'
-import type { BarGlyphs, EffortLevel, Frames, Motion, PaneCard } from './format'
+import { addUsage, agentCounts, agentLine, askedOf, audioMime, bar, BAR_GLYPHS, barGlyphOf, baseName, cacheHitOf, callsLine, cellsOf, cleanOf, clip, clipStart, clockOf, colorOf, colorSaid, colorThemeOf, countHooks, countTool, dateOf, diffCounts, diffOf, doneOf, duration, effortGauge, effortGuess, effortLevelOf, effortSaid, effortTint, elapsed, errorLine, errorText, folderOf, frameAt, framesFor, gitDirOf, headName, hintTail, isEnded, isOwnData, isWorktreeDir, limitOf, limitSetting, lineDiff, linesOf, LOG_CAPS, logFrom, logMarkdown, logMatches, logWheel, markReached, mcpNameOf, mcpServersOf, memoryOf, minutesToFull, modelBase, modelName, nextFrame, NO_FRAMES, NO_TOTALS, oneLine, OUTCOME_WORDS, PANE_CARDS, PALETTES, paneOrderOf, panelRowsText, parentOf, partText, pathIn, recentOf, renameSaid, sealedOf, sessionColorOf, soundFiles, spriteFrames, stampOf, standing, STATE_ORDER, stateOf, sweepOf, targetOf, tasksFrom, tasksInOrder, tasksOfTodos, tint, tokensShort, toolKind, toolsLine, toolsOf, totalsFrom, updateTask, withOnce, withoutFrame, wrapCells } from './format'
+import type { BarGlyphs, EffortLevel, Frames, Motion, Palette, PaneCard, Tone } from './format'
 
 /** The GIF's own pace: 25 frames every 2 seconds. */
 const FRAME_MS = 80
@@ -88,6 +88,12 @@ const LOG_FIND_KEY = 'log-find'
  * plugin's is passed over.
  */
 const DATA_FOLDER = 'plugins/data/pane-mod-pane-mod'
+/**
+ * The folder of the data folder that holds each session's rows for Claude
+ * Code's subagent panel (`<session>.jsonl`), which the plugin's
+ * `subagentStatusLine` script reads as they are.
+ */
+const PANEL_FOLDER = 'subagents'
 /** What opens a written file with the app the system picks: macOS's, then the freedesktop one. */
 const OPENERS = ['/usr/bin/open', 'xdg-open'] as const
 /** The percents of the context and of the 5h window an alert is raised at, each once until it falls back under. */
@@ -99,9 +105,15 @@ const PACE_RETELL_MS = 30 * 60_000
 /** Each alert's mark, where the line under an approval dialog names the others standing. */
 const ALERT_MARK: Record<AlertKind, string> = { approval: '⚠', limit: '▲' }
 const PACE_MINUTES = 60
-/** The side pane: its id, the width it asks for, and the sprite it draws beside its first card. */
+/**
+ * The side pane: its id, the width it asks for (the engine keeps a docked pane
+ * within 45% of the terminal, so a narrower one draws narrower), and the sprite
+ * it draws beside its first card.
+ */
 const PANE = 'pane-mod'
 const PANE_COLUMNS = 56
+/** What the pane's body is painted with: nothing, so the terminal's own background shows through it. */
+const PANE_BACKGROUND = 'transparent'
 const PANE_SPRITE = { columns: 12, rows: 6 } as const
 /** A card's border and padding on each side, which its rows are drawn inside of. */
 const CARD_INSET = 4
@@ -112,19 +124,7 @@ const TEXT_MIN = 24
 const PANE_SPRITE_MIN = CARD_INSET + PANE_SPRITE.columns + PANE_SPRITE_GAP + TEXT_MIN
 /** What stands between the parts of a row. */
 const SEP = ' · '
-const ACCENT = '#F7D02C'
-/** The text on a yellow badge. */
-const BADGE_TEXT = '#1b1b1b'
-/**
- * Theme colors: a gauge's unlit steps and a plain card's border (the theme's
- * own gray), and the model card's (Claude's orange). The two borders are the
- * defaults of the `cardColor` and `modelColor` settings.
- */
-const UNLIT = 'subtle'
-const CARD = 'subtle'
-const MODEL_CARD = 'claude'
-/** The branch's color, and the mark after it in a linked worktree. */
-const BRANCH = '#ba68c8'
+/** The mark after the branch in a linked worktree. */
 const WORKTREE_MARK = '⎇'
 /** Directories walked up from the working directory looking for `.git`. */
 const GIT_DEPTH = 32
@@ -142,24 +142,23 @@ type Fast = Omit<Snapshot, keyof Slow | 'mode' | 'style' | 'title' | 'color'>
 /** What the HUD has seen of one subagent beyond what `$.agent.list()` says. */
 type Seen = { startedAt: number; endedAt: number | null; idleAt: number | null; tools: number; tool: string | null }
 
-const STATE_MARK: Record<AgentState, { mark: string; color?: string }> = {
-  running: { mark: '●', color: ACCENT },
-  waiting: { mark: '◐', color: '#4fc3f7' },
+/** How a subagent's state is marked: in a tone of the color theme, or plain and dim. */
+const STATE_MARK: Record<AgentState, { mark: string; tone?: Tone }> = {
+  running: { mark: '●', tone: 'accent' },
+  waiting: { mark: '◐', tone: 'info' },
   idle: { mark: '○' },
   pending: { mark: '·' },
-  done: { mark: '✓', color: '#66bb6a' },
-  failed: { mark: '✗', color: '#ef5350' },
+  done: { mark: '✓', tone: 'good' },
+  failed: { mark: '✗', tone: 'bad' },
 }
-/** The lines a diff adds, and those it removes, as the changes card counts them. */
-const ADDED = '#66bb6a'
-const REMOVED = '#ef5350'
 /** How the subagents are shown under the rows: one row each, one row of counts, or not at all. */
 type AgentsShown = 'list' | 'summary' | 'off'
 type Layout = 'auto' | 'band' | 'pane' | 'hint'
 const LAYOUTS: readonly Layout[] = ['auto', 'band', 'pane', 'hint']
 /** The two element constructors the HUD's rows are built from. */
 type Kit = Pick<Elements['terminal'], 'Box' | 'Text'>
-const MODE_COLOR: Readonly<Record<string, string>> = { bypassPermissions: '#ef5350', acceptEdits: '#ffb74d', plan: '#81c784', auto: '#4fc3f7' }
+/** The permission modes drawn in a tone; the others plain and dim. */
+const MODE_TONE: Readonly<Record<string, Tone>> = { bypassPermissions: 'bad', acceptEdits: 'hot', plan: 'good', auto: 'info' }
 
 // The module's own variables start over on a reload; `snap` and `frame` are the host's and stay.
 let isAnimated = true
@@ -282,8 +281,12 @@ let paneOrder: readonly PaneCard[] = PANE_CARDS
  * the model card's, and every other card's.
  */
 let sessionBorder: string | null = null
-let modelBorder: string = MODEL_CARD
-let cardBorder: string = CARD
+let modelBorder: string = PALETTES.default.model
+let cardBorder: string = PALETTES.default.line
+/** The color theme the HUD draws in; the borders above take its colors where their settings say `auto`. */
+let palette: Palette = PALETTES.default
+/** A tone of the color theme, or none for a mark drawn plain. */
+const toneOf = (tone: Tone | undefined): string | undefined => (tone === undefined ? undefined : palette[tone])
 /** The characters every gauge's lit and unlit steps are drawn with. */
 let barGlyphs: BarGlyphs = BAR_GLYPHS
 /**
@@ -307,6 +310,11 @@ let changeCount = 0
 let diffDrawn: { key: string; diff: ReturnType<typeof diffOf> } | null = null
 /** The tool calls under way by id, with their tool and loop, so an approval asked can be told which call it holds. */
 const inFlight = new Map<string, { tool: string; agentId: string | undefined }>()
+/** Each subagent's tokens as its requests report them: its last request's input, and its output so far. */
+const agentUsage = new Map<string, { input: number; output: number }>()
+/** The rows last written for the subagent panel, and the file they were written to. */
+let panelText = ''
+let panelPath: string | null = null
 
 /**
  * The branch of the repository `cwd` is in, and whether `cwd` is in a linked
@@ -368,6 +376,7 @@ const agentRows = (agents: readonly AgentInfo[], now: number): AgentRow[] => {
   const rows: (AgentRow & { startedAt: number })[] = []
 
   for (const id of seen.keys()) if (!agents.some(agent => agent.id === id)) seen.delete(id)
+  for (const id of agentUsage.keys()) if (!seen.has(id)) agentUsage.delete(id)
   for (const agent of agents) {
     const state = stateOf(agent.status)
     const entry = seen.get(agent.id) ?? { startedAt: now, endedAt: null, idleAt: null, tools: 0, tool: null }
@@ -386,6 +395,8 @@ const agentRows = (agents: readonly AgentInfo[], now: number): AgentRow[] => {
       seconds: Math.floor(((entry.endedAt ?? entry.idleAt ?? now) - entry.startedAt) / 1000),
       tools: entry.tools,
       tool: isEnded(state) || state === 'idle' ? null : entry.tool,
+      // The engine shows no ended agent's transcript, nor a teammate's in a pane of its own: its id is its address.
+      isViewable: !isEnded(state) && (agent.teammateId === undefined || agent.teammateId !== agent.id),
       startedAt: entry.startedAt,
     })
   }
@@ -794,6 +805,39 @@ const keptFolder = async ($: Engine): Promise<string | null> => {
 }
 
 /**
+ * Writes this session's rows for Claude Code's subagent panel where they
+ * changed: the subagents the HUD lists, which the plugin's `subagentStatusLine`
+ * script hands the panel as they are. An empty list empties the file, and the
+ * panel draws its own rows again; a session with no subagent writes none.
+ */
+const writePanel = async ($: Engine, agents: readonly AgentRow[]): Promise<void> => {
+  const text = panelRowsText(agents, new Map([...agentUsage].map(([id, usage]) => [id, usage.input + usage.output])))
+
+  if (text === panelText) return
+  const data = await dataFolder($)
+
+  if (data === null || logSession === undefined) return
+  const path = `${data}/${PANEL_FOLDER}/${logSession}.jsonl`
+
+  // Another session's rows (one /clear left) are let go of first; a new session with none writes none.
+  if (panelPath !== null && panelPath !== path) await dropPanel($)
+  if (text === panelText) return
+  await $.fs.write(path, text)
+  panelText = text
+  panelPath = path
+}
+
+/** Removes the session's rows for the subagent panel, as the session ends. */
+const dropPanel = async ($: Engine): Promise<void> => {
+  if (panelPath === null) return
+  const at = panelPath.lastIndexOf('/')
+
+  await removeKept($, panelPath.slice(0, at), [{ name: panelPath.slice(at + 1), size: 1 }])
+  panelPath = null
+  panelText = ''
+}
+
+/**
  * Writes the session's log as a Markdown file and opens it with the system's
  * app for it: the one program the mod runs, and only on this press.
  */
@@ -936,6 +980,7 @@ const refresh = async ($: Engine, isFull = false): Promise<void> => {
   }
   const fast = await gatherFast($)
 
+  await writePanel($, fast.agents).catch(() => undefined)
   noteLimits($, fast, now)
   dropAlerts(alert => alert.until !== null && alert.until <= now)
   const next: Snapshot = { ...slow, ...fast, mode, style, title: sessionTitle, color: sessionColor }
@@ -947,7 +992,7 @@ const refresh = async ($: Engine, isFull = false): Promise<void> => {
  * Whether frames go as bytes. A terminal that reads this machine's files itself
  * (Ghostty, kitty) is handed the path, and the pixels never cross `$`. Any other
  * is sent the PNG: a terminal drawn inside an app may show a picture sent to it
- * to it but cannot open a path, and the engine then draws the `alt` instead.
+ * but cannot open a path, and the engine then draws the `alt` instead.
  */
 const sendsBytes = async ($: Engine): Promise<boolean> => {
   if (spriteSource !== 'auto') return spriteSource === 'bytes'
@@ -1123,9 +1168,22 @@ const noteTool = async ($: Engine, agentId: string, tool: string): Promise<void>
   seen.set(agentId, { ...entry, tools: entry.tools + 1, tool })
 }
 
-/** Notes when a subagent started, from its spawn rather than from the first list that shows it. */
-const noteSpawn = async ($: Engine, agentId: string): Promise<void> => {
-  if (!seen.has(agentId)) seen.set(agentId, { startedAt: await $.clock.now(), endedAt: null, idleAt: null, tools: 0, tool: null })
+/**
+ * Notes when a subagent started, from its spawn rather than from the first list
+ * that shows it. One taken up again once it ended (a SendMessage to it) starts
+ * over: its row counts this run's time and calls, not the wait between runs.
+ * One woken while it waits on background work of its own never ended: the
+ * engine wakes it as a resume too, and its row counts on from its first run.
+ */
+const noteSpawn = async ($: Engine, agentId: string, isResumed: boolean): Promise<void> => {
+  const entry = seen.get(agentId)
+
+  if (entry === undefined || (isResumed && entry.endedAt !== null)) seen.set(agentId, { startedAt: await $.clock.now(), endedAt: null, idleAt: null, tools: 0, tool: null })
+}
+
+/** Shows an agent's transcript in the main view, or the main conversation's again; on the person's own press only. */
+const viewAgent = async ($: Engine, agentId: string | undefined): Promise<void> => {
+  await $.ui.view(agentId === undefined ? {} : { agentId })
 }
 
 /** Whether the HUD wants the side pane now. */
@@ -1133,7 +1191,7 @@ const wantsPane = (): boolean => !isPaneDismissed && (layout === 'pane' || (layo
 
 const openPane = async ($: Engine): Promise<void> => {
   paneState = 'open'
-  await $.ui.open({ id: PANE, title: PANE, closeOnEscape: true, columns: PANE_COLUMNS })
+  await $.ui.open({ id: PANE, title: PANE, closeOnEscape: true, columns: PANE_COLUMNS, backgroundColor: PANE_BACKGROUND })
 }
 
 const closePane = async ($: Engine): Promise<void> => {
@@ -1189,9 +1247,10 @@ export const register: Register = (on, options) => {
   }
   // A mistyped order, color or step falls back to its default, so no setting can get a drawing refused.
   paneOrder = paneOrderOf(options.paneOrder)
+  palette = PALETTES[colorThemeOf(options.colorTheme)]
   sessionBorder = colorOf(options.sessionColor, null)
-  modelBorder = colorOf(options.modelColor, MODEL_CARD)
-  cardBorder = colorOf(options.cardColor, CARD)
+  modelBorder = colorOf(options.modelColor, palette.model)
+  cardBorder = colorOf(options.cardColor, palette.line)
   barGlyphs = { filled: barGlyphOf(options.barFilled, BAR_GLYPHS.filled), empty: barGlyphOf(options.barEmpty, BAR_GLYPHS.empty) }
 
   on('session.start', async ($, e, next) => {
@@ -1311,25 +1370,29 @@ export const register: Register = (on, options) => {
   }).catch(($, e, next) => next(e))
 
   // The sprite focuses on a model turn: a typed prompt's, a skill's or a continuation's. A slash command that starts
-  // none (/effort, /reload-plugins) never reaches here, so it leaves the sprite idle.
+  // none (/effort, /reload-plugins) never reaches here, so it leaves the sprite idle. A subagent's or a teammate's
+  // turn (`agentId`) is not one: it neither focuses the sprite nor heads a log line, and one that outlasts the main
+  // turn leaves the sprite to rest when the main turn ends.
   on('turn.start', async ($, e, next) => {
     const started = await next(e)
 
+    if (e.agentId !== undefined) return started
     liveTurns.add(started.turnId)
     // The first turn to start while none is tallied is the main one; what it was asked heads its log line.
-    if (tally === null) tally = newTally(await $.clock.now(), promptOf(e.text, LOG_TEXT_KEPT) || '(continued)')
+    if (tally === null) tally = newTally(await $.clock.now(), askedOf(e.text, LOG_TEXT_KEPT) || '(continued)')
     setMotion($, 'working')
 
     return started
   }).catch(($, e, next) => next(e))
 
-  // A subagent spawned while a main turn runs is noted in that turn's log line, whichever loop spawned it.
+  // A subagent spawned while a main turn runs is noted in that turn's log line, whichever loop spawned it; one taken up
+  // again (`resume`) is noted in the line of the turn it runs in now.
   on('agent.spawn', async ($, e, next) => {
     const started = await next(e)
 
     if (started.agentId !== undefined) {
       noteTurnAgent(started.agentId, e.subagentType, e.description, await $.clock.now())
-      await noteSpawn($, started.agentId).catch(() => undefined)
+      await noteSpawn($, started.agentId, e.resume !== undefined).catch(() => undefined)
       await refresh($).catch(() => undefined)
     }
 
@@ -1376,11 +1439,22 @@ export const register: Register = (on, options) => {
     }
   }).catch(($, e, next) => next(e))
 
-  // Every request of the main thread says the level it goes out with: the engine's own word, over any guess.
+  // Every request of the main thread says the level it goes out with: the engine's own word, over any guess. A
+  // subagent's says its tokens, as its row in the subagent panel counts them: the last input with every output so far.
   on('turn.step', async function* ($, e, next) {
     if (e.agentId === undefined && e.effort !== undefined) effortSeen = { model: e.model, value: e.effort }
+    const stepped = yield* next(e)
 
-    return yield* next(e)
+    if (e.agentId !== undefined && stepped.usage != null) {
+      const { usage } = stepped
+
+      agentUsage.set(e.agentId, {
+        input: usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens,
+        output: (agentUsage.get(e.agentId)?.output ?? 0) + usage.output_tokens,
+      })
+    }
+
+    return stepped
   })
 
   // `/effort` prints the level it set as a row of the transcript (its command result carries no text when picked from
@@ -1435,6 +1509,8 @@ export const register: Register = (on, options) => {
       closeTally(Math.max(0, Math.round((now - startedAt) / 1000)), 'aborted', undefined, now, (await read($, snap))?.agents ?? [])
       await saveLog($, false).catch(() => undefined)
     }
+    // The subagent panel's rows go with the session that wrote them.
+    await dropPanel($).catch(() => undefined)
 
     return next(e)
   }).catch(($, e, next) => next(e))
@@ -1514,7 +1590,7 @@ export const register: Register = (on, options) => {
 
     return (
       <Box flexDirection="column">
-        <Text color={ACCENT}>{'━'.repeat(columns)}</Text>
+        <Text color={palette.accent}>{'━'.repeat(columns)}</Text>
         <Box flexDirection="row" gap={isSprite ? SPRITE_MARGIN : 0} paddingLeft={isSprite ? SPRITE_MARGIN : 0} width={columns}>
           {sprite !== undefined && <Image key={SPRITE_KEY} source={sprite} columns={SPRITE.columns} rows={SPRITE.rows} alt=" " />}
           <Box flexDirection="column" width={left}>
@@ -1523,7 +1599,11 @@ export const register: Register = (on, options) => {
             {sections.usage && usageRow(kit, shot)}
             {sections.context && contextRow(kit, shot)}
             {sections.now && statusRow(kit, shot, e.props.isWorking)}
-            {agentList(kit, shot, agentsShown === 'list' ? room : 0)}
+            {agentList(kit, shot, agentsShown === 'list' ? room : 0, 'truncate-end', {
+              Button: kit.Button,
+              agentId: e.props.view.agentId,
+              onView: agentId => void viewAgent($, agentId).catch(() => undefined),
+            })}
           </Box>
         </Box>
       </Box>
@@ -1623,7 +1703,11 @@ export const register: Register = (on, options) => {
     // The cards under the first two, each drawn where `paneOrder` puts it; none where it has nothing or its section is off.
     const lower: Record<PaneCard, RenderElement | null> = {
       tasks: sections.tasks ? tasksCard(kit, shot, columns) : null,
-      agents: agentsCard(kit, shot, columns, Math.max(1, e.props.scroll.bodyRows)),
+      agents: agentsCard(kit, shot, columns, Math.max(1, e.props.scroll.bodyRows), {
+        Button: kit.Button,
+        agentId: e.props.view.agentId,
+        onView: agentId => void viewAgent($, agentId).catch(() => undefined),
+      }),
       context: sections.context ? contextCard(kit, shot, columns) : null,
       recent: sections.recent ? recentCard(kit, shot, columns) : null,
       changes: sections.changes ? changesCard(kit, kit.Button, shot, columns, path => void openDiff($, path, false).catch(() => undefined)) : null,
@@ -1662,8 +1746,8 @@ export const register: Register = (on, options) => {
 /** Row 1: the project with its branch. */
 const placeRow = ({ Text }: Kit, shot: Snapshot) => (
   <Text wrap="truncate-end">
-    <Text bold color={ACCENT}>{shot.project}</Text>
-    {shot.branch !== null && <Text color={BRANCH}>{`(${branchText(shot)})`}</Text>}
+    <Text weight="semibold" color={palette.accent}>{shot.project}</Text>
+    {shot.branch !== null && <Text color={palette.branch}>{`(${branchText(shot)})`}</Text>}
   </Text>
 )
 
@@ -1677,9 +1761,9 @@ const gauge = ({ Text }: Kit, percent: number | null) => {
 
   return (
     <Text>
-      <Text color={tint(percent)}>{lit}</Text>
-      <Text color={UNLIT}>{unlit}</Text>
-      <Text color={tint(percent)}>{` ${percent}%`}</Text>
+      <Text color={tint(percent, palette)}>{lit}</Text>
+      <Text color={palette.line}>{unlit}</Text>
+      <Text color={tint(percent, palette)}>{` ${percent}%`}</Text>
     </Text>
   )
 }
@@ -1693,9 +1777,9 @@ const effortMark = ({ Text }: Kit, effort: Snapshot['effort']) => {
 
   return (
     <Text>
-      <Text color={effortTint(level)}>{lit}</Text>
-      <Text color={UNLIT}>{unlit}</Text>
-      <Text color={effortTint(level)} bold={level === 'max'}>{` ${level}`}</Text>
+      <Text color={effortTint(level, palette)}>{lit}</Text>
+      <Text color={palette.line}>{unlit}</Text>
+      <Text color={effortTint(level, palette)} weight={level === 'max' ? 'semibold' : 'regular'}>{` ${level}`}</Text>
     </Text>
   )
 }
@@ -1704,8 +1788,8 @@ const effortMark = ({ Text }: Kit, effort: Snapshot['effort']) => {
 const statusMark = ({ Text }: Kit, shot: Snapshot, isWorking: boolean) =>
   isWorking ? (
     <Text>
-      <Text bold color={BADGE_TEXT} backgroundColor={ACCENT}>{' ● WORKING '}</Text>
-      {shot.turnSeconds !== null && <Text color={ACCENT}>{` ${duration(shot.turnSeconds)}`}</Text>}
+      <Text weight="semibold" color={palette.onAccent} backgroundColor={palette.accent}>{' ● WORKING '}</Text>
+      {shot.turnSeconds !== null && <Text color={palette.accent}>{` ${duration(shot.turnSeconds)}`}</Text>}
     </Text>
   ) : (
     <Text dimColor>○ idle</Text>
@@ -1717,7 +1801,7 @@ const modelRow = (kit: Kit, shot: Snapshot) => {
 
   return (
     <Text wrap="truncate-end">
-      <Text bold inverse>{` ${modelName(shot.model)} `}</Text>
+      <Text weight="semibold" inverse>{` ${modelName(shot.model)} `}</Text>
       <Text> </Text>
       {effortMark(kit, shot.effort)}
       {shot.usd !== null && <Text dimColor>{SEP}</Text>}
@@ -1776,7 +1860,7 @@ const statusRow = (kit: Kit, shot: Snapshot, isWorking: boolean) => {
 
   return (
     <Text wrap="truncate-end">
-      {shot.mode === null ? <Text dimColor>mode --</Text> : <Text color={MODE_COLOR[shot.mode]} dimColor={MODE_COLOR[shot.mode] === undefined}>{`mode ${shot.mode}`}</Text>}
+      {shot.mode === null ? <Text dimColor>mode --</Text> : <Text color={toneOf(MODE_TONE[shot.mode])} dimColor={MODE_TONE[shot.mode] === undefined}>{`mode ${shot.mode}`}</Text>}
       <Text dimColor>{SEP}</Text>
       {statusMark(kit, shot, isWorking)}
       {isWorking && shot.activity !== null && <Text>{`  ▶ ${shot.activity.tool}${shot.activity.target === null ? '' : ` ${shot.activity.target}`}`}</Text>}
@@ -1787,30 +1871,52 @@ const statusRow = (kit: Kit, shot: Snapshot, isWorking: boolean) => {
 }
 
 /**
+ * What a list of subagents needs for its rows to open a transcript: the site's
+ * Button, the agent whose transcript the main view shows (none for the main
+ * conversation), and what a press asks for (none: the main conversation).
+ */
+type AgentView = { Button: Elements['terminal']['Button']; agentId: string | undefined; onView: (agentId: string | undefined) => void }
+
+/**
  * The subagents: one row each within `room` rows (a count past it), or, with no
  * room for a list, one row of counts by state. Nothing while there are none or
- * the setting is off.
+ * the setting is off. Given `view`, the row of each agent the main view can
+ * show (`isViewable`) is a press that shows its transcript there (its name
+ * underlined while it does, and a press on it again goes back), and a row above
+ * them goes back to the main one (m).
  */
-const agentList = ({ Box, Text }: Kit, shot: Snapshot, room: number, wrap: 'wrap' | 'truncate-end' = 'truncate-end') => {
+const agentList = ({ Box, Text }: Kit, shot: Snapshot, room: number, wrap: 'wrap' | 'truncate-end' = 'truncate-end', view?: AgentView) => {
   if (agentsShown === 'off' || shot.agents.length === 0) return null
   if (room > 0) {
-    const listed = shot.agents.length > room ? shot.agents.slice(0, room - 1) : shot.agents
+    const isViewing = view?.agentId !== undefined
+    const rows = room - (isViewing ? 1 : 0)
+    const listed = shot.agents.length > rows ? shot.agents.slice(0, Math.max(0, rows - 1)) : shot.agents
     const unlisted = shot.agents.length - listed.length
+    const rowOf = (agent: AgentRow) => (
+      <Text key={agent.id} wrap={wrap}>
+        <Text dimColor>{'↳ '}</Text>
+        <Text color={toneOf(STATE_MARK[agent.state].tone)} dimColor={STATE_MARK[agent.state].tone === undefined}>
+          {STATE_MARK[agent.state].mark}
+        </Text>
+        <Text weight="semibold" underline={agent.id === view?.agentId}>{` ${agent.name ?? agent.type}`}</Text>
+        {agent.name !== null && <Text dimColor>{` ${agent.type}`}</Text>}
+        <Text>{`  ${agent.description}`}</Text>
+        <Text dimColor>{`  · ${duration(agent.seconds)}${toolsOf(agent)}`}</Text>
+      </Text>
+    )
 
     return (
       <Box flexDirection="column">
-        {listed.map(agent => (
-          <Text key={agent.id} wrap={wrap}>
-            <Text dimColor>{'↳ '}</Text>
-            <Text color={STATE_MARK[agent.state].color} dimColor={STATE_MARK[agent.state].color === undefined}>
-              {STATE_MARK[agent.state].mark}
-            </Text>
-            <Text bold>{` ${agent.name ?? agent.type}`}</Text>
-            {agent.name !== null && <Text dimColor>{` ${agent.type}`}</Text>}
-            <Text>{`  ${agent.description}`}</Text>
-            <Text dimColor>{`  · ${duration(agent.seconds)}${toolsOf(agent)}`}</Text>
-          </Text>
-        ))}
+        {view !== undefined && isViewing && <view.Button key="agent-main" label="◀ main conversation" hotkey="m" plain onPress={() => view.onView(undefined)} />}
+        {listed.map(agent =>
+          view === undefined || !agent.isViewable ? (
+            rowOf(agent)
+          ) : (
+            <view.Button key={`agent-${agent.id}`} plain onPress={() => view.onView(agent.id === view.agentId ? undefined : agent.id)}>
+              {rowOf(agent)}
+            </view.Button>
+          ),
+        )}
         {unlisted > 0 && <Text dimColor>{`↳ +${unlisted} more`}</Text>}
       </Box>
     )
@@ -1821,7 +1927,7 @@ const agentList = ({ Box, Text }: Kit, shot: Snapshot, room: number, wrap: 'wrap
     <Text wrap="truncate-end">
       <Text dimColor>{`↳ subagents ${shot.agents.length}`}</Text>
       {counted.map(part => (
-        <Text key={part.state} color={STATE_MARK[part.state].color} dimColor={STATE_MARK[part.state].color === undefined}>
+        <Text key={part.state} color={toneOf(STATE_MARK[part.state].tone)} dimColor={STATE_MARK[part.state].tone === undefined}>
           {`  ${STATE_MARK[part.state].mark} ${part.state} ${part.count}`}
         </Text>
       ))}
@@ -1838,7 +1944,7 @@ const themeColorOf = (color: SessionColor): string => `${color}_FOR_SUBAGENTS_ON
 /** A card's first row: its name, and a word at the right. */
 const cardTitle = ({ Box, Text }: Kit, name: string, aside: string | null, width: number) => (
   <Box flexDirection="row" justifyContent="space-between" width={width}>
-    <Text bold dimColor>
+    <Text weight="semibold" dimColor>
       {name}
     </Text>
     {aside !== null && <Text dimColor>{aside}</Text>}
@@ -1863,7 +1969,7 @@ const identityCard = (kit: Kit, shot: Snapshot, isWorking: boolean, columns: num
   if (!hasRows && picture === null) return null
 
   return (
-    <Box key="card-session" flexDirection="row" alignItems="flex-start" gap={PANE_SPRITE_GAP} borderStyle="round" borderColor={color ?? ACCENT} borderDimColor={color === undefined} paddingX={1} width={columns}>
+    <Box key="card-session" flexDirection="row" alignItems="flex-start" gap={PANE_SPRITE_GAP} borderStyle="round" borderColor={color ?? palette.accent} borderDimColor={color === undefined} paddingX={1} width={columns}>
       {hasRows && identityRows(kit, shot, isWorking, width, color, picture === null ? undefined : PANE_SPRITE.rows)}
       {picture}
     </Box>
@@ -1883,16 +1989,16 @@ const identityRows = (kit: Kit, shot: Snapshot, isWorking: boolean, width: numbe
     <Box key="card-session-rows" flexDirection="column" width={width} height={height}>
       <Box key="card-session-top" flexDirection="column" width={width}>
         {shot.title !== null && (
-          <Text bold color={color} wrap="truncate-end">
+          <Text weight="semibold" color={color} wrap="truncate-end">
             {shot.title}
           </Text>
         )}
         {sections.session && (
           <Text wrap="truncate-end">
-            <Text bold color={ACCENT}>
+            <Text weight="semibold" color={palette.accent}>
               {shot.project}
             </Text>
-            {shot.branch !== null && <Text color={BRANCH}>{` (${branchText(shot)})`}</Text>}
+            {shot.branch !== null && <Text color={palette.branch}>{` (${branchText(shot)})`}</Text>}
           </Text>
         )}
         {sections.session && (
@@ -1900,7 +2006,7 @@ const identityRows = (kit: Kit, shot: Snapshot, isWorking: boolean, width: numbe
             {shot.mode === null ? (
               <Text dimColor>mode --</Text>
             ) : (
-              <Text color={MODE_COLOR[shot.mode]} dimColor={MODE_COLOR[shot.mode] === undefined}>
+              <Text color={toneOf(MODE_TONE[shot.mode])} dimColor={MODE_TONE[shot.mode] === undefined}>
                 {shot.mode}
               </Text>
             )}
@@ -1958,7 +2064,7 @@ const modelCard = (kit: Kit, shot: Snapshot, columns: number) => {
       {sections.model && (
         <Box flexDirection="row" justifyContent="space-between" width={columns - CARD_INSET}>
           <Text wrap="truncate-end">
-            <Text bold>{modelName(shot.model)}</Text>
+            <Text weight="semibold">{modelName(shot.model)}</Text>
             {!sections.totals && shot.usd !== null && <Text dimColor>{`${SEP}$${shot.usd.toFixed(2)}`}</Text>}
           </Text>
           {effortMark(kit, shot.effort)}
@@ -1966,10 +2072,10 @@ const modelCard = (kit: Kit, shot: Snapshot, columns: number) => {
       )}
       {sections.usage && gaugeLine(kit, 'ctx', shot.contextPercent, context)}
       {sections.usage && gaugeLine(kit, '5h', five?.percentUsed ?? null, five?.resetsIn == null ? null : `↻ ${five.resetsIn}`)}
-      {sections.usage && shot.forecast !== null && <Text wrap="wrap" color={tint(85)}>{`    ≈ ${elapsed(shot.forecast)} to the 5h limit`}</Text>}
+      {sections.usage && shot.forecast !== null && <Text wrap="wrap" color={tint(85, palette)}>{`    ≈ ${elapsed(shot.forecast)} to the 5h limit`}</Text>}
       {sections.usage && gaugeLine(kit, '7d', week?.percentUsed ?? null, week?.resetsIn == null ? null : `↻ ${week.resetsIn}`)}
       {sections.totals && (
-        <Text wrap="truncate-end">{shot.usd === null ? <Text dimColor>$--</Text> : <Text bold>{`$${shot.usd.toFixed(2)}`}</Text>}</Text>
+        <Text wrap="truncate-end">{shot.usd === null ? <Text dimColor>$--</Text> : <Text weight="semibold">{`$${shot.usd.toFixed(2)}`}</Text>}</Text>
       )}
       {sections.totals && (
         <Text wrap="truncate-end" dimColor>
@@ -1985,11 +2091,11 @@ const modelCard = (kit: Kit, shot: Snapshot, columns: number) => {
 /** How many of the tasks the card lists before it counts the rest. */
 const TASK_ROWS = 8
 
-/** How a task shows by where it stands: under way in the HUD's yellow, waiting plain, done dim and green. */
-const TASK_MARK: Record<TaskItem['status'], { mark: string; color?: string; isDim: boolean }> = {
-  in_progress: { mark: '▶', color: ACCENT, isDim: false },
+/** How a task shows by where it stands: under way in the HUD's accent, waiting plain, done dim and green. */
+const TASK_MARK: Record<TaskItem['status'], { mark: string; tone?: Tone; isDim: boolean }> = {
+  in_progress: { mark: '▶', tone: 'accent', isDim: false },
   pending: { mark: '○', isDim: false },
-  completed: { mark: '✓', color: '#66bb6a', isDim: true },
+  completed: { mark: '✓', tone: 'good', isDim: true },
 }
 
 /**
@@ -2011,7 +2117,7 @@ const tasksCard = (kit: Kit, shot: Snapshot, columns: number) => {
         const style = TASK_MARK[task.status]
 
         return (
-          <Text key={`task-${task.id}`} wrap="wrap" color={style.color} dimColor={style.isDim}>
+          <Text key={`task-${task.id}`} wrap="wrap" color={toneOf(style.tone)} dimColor={style.isDim}>
             {`${style.mark} ${task.status === 'in_progress' ? (task.activeForm ?? task.subject) : task.subject}`}
           </Text>
         )
@@ -2021,8 +2127,12 @@ const tasksCard = (kit: Kit, shot: Snapshot, columns: number) => {
   )
 }
 
-/** The subagents in a card, one row each within `room` rows; none while there are none or the setting is off. */
-const agentsCard = (kit: Kit, shot: Snapshot, columns: number, room: number) => {
+/**
+ * The subagents in a card, one row each within `room` rows, each a press that
+ * shows its transcript in the main view; none while there are none or the
+ * setting is off.
+ */
+const agentsCard = (kit: Kit, shot: Snapshot, columns: number, room: number, view: AgentView) => {
   const { Box } = kit
 
   if (agentsShown === 'off' || shot.agents.length === 0) return null
@@ -2030,7 +2140,7 @@ const agentsCard = (kit: Kit, shot: Snapshot, columns: number, room: number) => 
   return (
     <Box key="card-agents" flexDirection="column" borderStyle="round" borderColor={cardBorder} paddingX={1} width={columns}>
       {cardTitle(kit, 'subagents', agentCounts(shot.agents.map(agent => agent.state)), columns - CARD_INSET)}
-      {agentList(kit, shot, room, 'wrap')}
+      {agentList(kit, shot, room, 'wrap', view)}
     </Box>
   )
 }
@@ -2105,9 +2215,9 @@ const countsMark = ({ Text }: Kit, change: Pick<ChangeRow, 'added' | 'removed'>)
     <Text dimColor>?</Text>
   ) : (
     <Text>
-      {change.added > 0 && <Text color={ADDED}>{`+${change.added}`}</Text>}
+      {change.added > 0 && <Text color={palette.good}>{`+${change.added}`}</Text>}
       {change.added > 0 && change.removed > 0 && <Text> </Text>}
-      {change.removed > 0 && <Text color={REMOVED}>{`-${change.removed}`}</Text>}
+      {change.removed > 0 && <Text color={palette.bad}>{`-${change.removed}`}</Text>}
     </Text>
   )
 
@@ -2170,7 +2280,7 @@ const diffView = (
     <Box key="diff-view" flexDirection="column" width={columns}>
       <Box key={DIFF_KEY} flexDirection="column" borderStyle="round" borderColor={cardBorder} paddingX={1} width={columns}>
         <Box flexDirection="row" justifyContent="space-between" width={inner}>
-          <Text bold>{clipStart(change.name, inner - cellsOf(countsText(change)) - 1)}</Text>
+          <Text weight="semibold">{clipStart(change.name, inner - cellsOf(countsText(change)) - 1)}</Text>
           {countsMark(kit, change)}
         </Box>
         <Box flexDirection="row" justifyContent="space-between" width={inner}>
@@ -2204,11 +2314,11 @@ const diffView = (
 }
 
 /** How a turn ended, as the log marks it. */
-const OUTCOME_MARK: Record<LogEntry['outcome'], { mark: string; color?: string }> = {
-  answer: { mark: '✓', color: '#66bb6a' },
+const OUTCOME_MARK: Record<LogEntry['outcome'], { mark: string; tone?: Tone }> = {
+  answer: { mark: '✓', tone: 'good' },
   aborted: { mark: '⏹' },
-  refusal: { mark: '⊘', color: '#ffb74d' },
-  error: { mark: '✗', color: '#ef5350' },
+  refusal: { mark: '⊘', tone: 'hot' },
+  error: { mark: '✗', tone: 'bad' },
 }
 
 /** The log's rows and detail are drawn with a Button beside the shared two. */
@@ -2228,9 +2338,9 @@ const logRow = ({ Box, Text, Button }: LogKit, entry: LogEntry & { at: string },
       <Box width={Math.max(1, columns - 2)}>
         <Text wrap="truncate-end">
           <Text dimColor>{`${entry.at} `}</Text>
-          <Text color={mark.color} dimColor={mark.color === undefined}>{mark.mark}</Text>
+          <Text color={toneOf(mark.tone)} dimColor={mark.tone === undefined}>{mark.mark}</Text>
           <Text dimColor>{` ${duration(entry.seconds).padStart(6)}  `}</Text>
-          <Text bold={isOpen}>{oneLine(entry.text, LOG_TEXT_KEPT)}</Text>
+          <Text weight={isOpen ? 'semibold' : 'regular'}>{oneLine(entry.text, LOG_TEXT_KEPT)}</Text>
           {done.length > 0 && <Text dimColor>{` · ${done.join(' · ')}`}</Text>}
         </Text>
       </Box>
@@ -2287,7 +2397,7 @@ const logDetail = (kit: LogKit, entry: LogEntry, columns: number, onCopy: (surfa
     <Box key={LOG_DETAIL_KEY} flexDirection="column" paddingLeft={DETAIL_INDENT} width={columns}>
       <Text wrap="truncate-end">
         <Text dimColor>{`${dateOf(entry.endedAt)} · `}</Text>
-        <Text color={mark.color} dimColor={mark.color === undefined}>{OUTCOME_WORDS[entry.outcome]}</Text>
+        <Text color={toneOf(mark.tone)} dimColor={mark.tone === undefined}>{OUTCOME_WORDS[entry.outcome]}</Text>
         <Text dimColor>{` · ${duration(entry.seconds)}`}</Text>
       </Text>
       {detailLines(entry, columns - DETAIL_INDENT).map(line => (
@@ -2400,14 +2510,14 @@ const compactRow = (kit: Kit, shot: Snapshot, isWorking: boolean, columns: numbe
 
   return (
     <Text wrap="truncate-end">
-      <Text color={ACCENT}>{'━━ '}</Text>
-      <Text bold inverse>{` ${modelName(shot.model)} `}</Text>
+      <Text color={palette.accent}>{'━━ '}</Text>
+      <Text weight="semibold" inverse>{` ${modelName(shot.model)} `}</Text>
       <Text> </Text>
       {effortMark(kit, shot.effort)}
       <Text dimColor>{`${SEP}ctx `}</Text>
-      {shot.contextPercent === null ? <Text dimColor>--</Text> : <Text color={tint(shot.contextPercent)}>{`${shot.contextPercent}%`}</Text>}
+      {shot.contextPercent === null ? <Text dimColor>--</Text> : <Text color={tint(shot.contextPercent, palette)}>{`${shot.contextPercent}%`}</Text>}
       <Text dimColor>{`${SEP}5h `}</Text>
-      {five === undefined ? <Text dimColor>--</Text> : <Text color={tint(five.percentUsed)}>{`${five.percentUsed}%`}</Text>}
+      {five === undefined ? <Text dimColor>--</Text> : <Text color={tint(five.percentUsed, palette)}>{`${five.percentUsed}%`}</Text>}
       <Text dimColor>{SEP}</Text>
       {statusMark(kit, shot, isWorking)}
       {running > 0 && <Text dimColor>{`${SEP}subagents ${running}`}</Text>}

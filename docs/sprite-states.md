@@ -9,7 +9,7 @@ pane-mod가 구분할 수 있는 Claude Code 상태와, 상태별로 필요한 �
 | 상태 | 스프라이트 | 신호 | 비고 |
 |---|---|---|---|
 | 턴 사이 | `idle` (반복) | `turn.complete` 이후 | 기본 상태입니다. |
-| 작업 중 | `working` (반복) | `turn.start` → `turn.complete` (진행 중인 턴 id로 추적) | 턴 안의 세부 단계를 구분하지 않습니다. 모델 턴을 열지 않는 단발 명령(`/effort` 등)에서는 idle을 유지합니다. |
+| 작업 중 | `working` (반복) | 메인 대화의 `turn.start` → `turn.complete` (진행 중인 턴 id로 추적) | 턴 안의 세부 단계를 구분하지 않습니다. 모델 턴을 열지 않는 단발 명령(`/effort` 등)에서는 idle을 유지합니다. Claude Code 2.1.299부터 `turn.start`는 서브에이전트와 teammate의 턴에도 발생하므로, `agentId`가 있는 턴은 세지 않습니다. |
 | 턴 완료 | `complete` (1회) | `turn.complete`의 `reason: 'answer'` | **꺼져 있습니다.** `IS_CHEERING`으로 다시 켤 수 있습니다. |
 
 ## 추가 후보 상태

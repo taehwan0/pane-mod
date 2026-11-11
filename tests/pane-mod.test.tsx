@@ -2,12 +2,12 @@ import type { AgentInfo, On, SessionUsage } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 import type { MockClock, TestBody } from 'claude-code/testing'
 
-import { agentCounts, audioMime, bar, barGlyphOf, colorOf, paneOrderOf, modelName, cacheHitOf, cellsOf, clipCells, logWheel, wrapCells, colorSaid, countHooks, dateOf, duration, folderOf, frameAt, framesFor, logFrom, logMatches, logMarkdown, markReached, NO_FRAMES, promptOf, standing, pruneLogs, renameSaid, stampOf, effortGauge, effortGuess, effortLevelOf, effortSaid, gitDirOf, headName, isWorktreeDir, mcpServersOf, memoryOf, minutesToFull, nextFrame, oneLine, soundFiles, spriteFrames, stateOf, targetOf, tint, tokensShort, toolKind, toolsOf, until, withoutFrame } from '../hooks/format'
-import { countTool, errorLine, isOwnData, keptFileOf, limitSetting, LOG_CAPS, mcpNameOf, OTHER_TOOLS, partText, recentOf, sealedOf, sweepOf, toolsLine, withOnce } from '../hooks/format'
+import { agentCounts, askedOf, audioMime, bar, barGlyphOf, colorOf, colorThemeOf, PALETTES, paneOrderOf, modelName, cacheHitOf, cellsOf, clipCells, logWheel, wrapCells, colorSaid, countHooks, dateOf, duration, folderOf, frameAt, framesFor, logFrom, logMatches, logMarkdown, markReached, NO_FRAMES, promptOf, standing, pruneLogs, renameSaid, stampOf, effortGauge, effortGuess, effortTint, effortLevelOf, effortSaid, gitDirOf, headName, isWorktreeDir, mcpServersOf, memoryOf, minutesToFull, nextFrame, oneLine, soundFiles, spriteFrames, stateOf, targetOf, tint, tokensShort, toolKind, toolsOf, until, withoutFrame } from '../hooks/format'
+import { countTool, errorLine, isOwnData, keptFileOf, limitSetting, LOG_CAPS, mcpNameOf, OTHER_TOOLS, panelRowOf, panelRowsText, partText, recentOf, sealedOf, sweepOf, toolsLine, withOnce } from '../hooks/format'
 import { clipStart, diffCounts, diffOf, hunksOf, lineDiff, linesOf, pathIn, unifiedOf } from '../hooks/format'
 
 const START = { cwd: '/w/app', surface: 'terminal', isInteractive: true } as const
-const BAND = { hasSurvey: false, isWorking: false, maxRows: 12, bodyColumns: 140, scroll: { offset: 0, bodyRows: 12 }, view: {} }
+const BAND = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 12, bodyColumns: 140, scroll: { offset: 0, bodyRows: 12 }, view: {} }
 const NOW = 95 * 60_000
 const ACCENT = '#F7D02C'
 
@@ -42,6 +42,10 @@ const agent = (id: string, type: string, description: string, status: AgentInfo[
 type PaneWorld = {
   panes: { id: string; title: string; isShown: boolean; isFocused: boolean; isPlaced: boolean }[]
   opened: string[]
+  /** What each pane opened asked to be painted under its body. */
+  backgrounds: (string | undefined)[]
+  /** Each transcript the mod asked the main view to show: an agent's id, or null for the main conversation's. */
+  viewed: (string | null)[]
   closed: string[]
   usage?: () => SessionUsage
   /** The id of the session in view. */
@@ -63,7 +67,7 @@ type PaneWorld = {
 const framesNamed = (count: number): string[] => Array.from({ length: count }, (_, index) => `frame_${String(index + 1).padStart(3, '0')}.png`)
 /** The mod's own frames as the repository's folder holds them: 36 idle, 29 working, 22 for the cheer; no clips. */
 const OWN_FRAMES = { 'assets/idle': framesNamed(36), 'assets/working': framesNamed(29), 'assets/complete': framesNamed(22) }
-const paneWorld = (): PaneWorld => ({ panes: [], opened: [], closed: [], sessionId: 'sess-A', files: {}, ran: [], folders: { ...OWN_FRAMES }, unreadable: [], played: [] })
+const paneWorld = (): PaneWorld => ({ panes: [], opened: [], backgrounds: [], viewed: [], closed: [], sessionId: 'sess-A', files: {}, ran: [], folders: { ...OWN_FRAMES }, unreadable: [], played: [] })
 
 /** The plugin's data folder as the engine names it (as HOME's would be), and the folder the logs are kept in. */
 const DATA = '/Users/me/.claude/plugins/data/pane-mod-pane-mod'
@@ -125,8 +129,14 @@ const world = (
   on('ui.invalidate', () => ({ value: undefined }))
   on('ui.open', ($, e) => {
     ui.opened.push(e.id)
+    ui.backgrounds.push(e.backgroundColor)
 
     return { value: { isPlaced: true as const } }
+  })
+  on('ui.view', ($, e) => {
+    ui.viewed.push(e.agentId ?? null)
+
+    return { value: {} }
   })
   on('ui.close', ($, e) => {
     ui.closed.push(e.id)
@@ -218,7 +228,7 @@ test('under a yellow rule the band shows the sprite at the left and the figures 
   expect(await band.find({ type: 'Text', text: /^app\(refactor\/global-search\)$/ })).toBeDefined()
   // Row 2: the model on a badge, its effort (unknown here: nothing saved, no request yet), and cost.
   expect(await band.find({ type: 'Text', text: /^ Opus 5\.5  effort -- · \$1\.50$/ })).toBeDefined()
-  expect(await band.find({ type: 'Text', text: /^ Opus 5\.5 $/ })).toMatchObject({ props: { bold: true, inverse: true } })
+  expect(await band.find({ type: 'Text', text: /^ Opus 5\.5 $/ })).toMatchObject({ props: { weight: 'semibold', inverse: true } })
   // Row 3: context, then each window as its gauge and the time to its reset.
   expect(await band.find({ type: 'Text', text: /^ctx ▰▰▰▰▱▱▱▱▱▱ 42% · 5h ▰▰▰▰▰▰▰▱▱▱ 70% ↻2h05m · 7d ▰▱▱▱▱▱▱▱▱▱ 12% ↻3d0h$/ })).toBeDefined()
   // A gauge is two colors: its lit steps and percent in the figure's tint, its unlit steps in the theme's gray.
@@ -293,6 +303,106 @@ test('a subagent shows by its name, its type after it; an idle teammate stops it
   expect(await paneRows($)).toContain('1 running · 1 idle · 2')
 })
 
+test("a subagent's row shows its transcript in the main view when pressed, in the band and in the pane; the row again, or a row above them, goes back to the main one", LIST, async ($, on) => {
+  const ui = paneWorld()
+
+  world(on, '/w/app', REPO, ['/w/app/.git'], () => [
+    agent('a1', 'Explore', 'find the login bug', 'running'),
+    { ...agent('a3', 'general-purpose', 'review the schema', 'running'), name: 'reviewer', teammateId: 'reviewer@team' },
+    { ...agent('sleeper@team', 'general-purpose', 'wait in tmux', 'running'), name: 'sleeper', teammateId: 'sleeper@team' },
+    agent('a2', 'Plan', 'plan the fix', 'completed'),
+  ], GHOSTTY, [], {}, ui)
+  await $.session.start(START)
+
+  // The rows read as before; with the main conversation in view there is no row back to it.
+  const band = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+
+  expect((await band.findAll({ type: 'Text', text: /^↳ ./ })).map(row => row.text)).toEqual([
+    '↳ ● Explore  find the login bug  · 0s',
+    '↳ ● reviewer general-purpose  review the schema  · 0s',
+    '↳ ● sleeper general-purpose  wait in tmux  · 0s',
+    '↳ ✓ Plan  plan the fix  · 0s',
+  ])
+  expect(await band.find({ key: 'agent-main' })).toBeUndefined()
+  await band.press({ key: 'agent-a1' })
+  expect(ui.viewed).toEqual(['a1'])
+  await band.unmount()
+
+  // With a1's transcript in view, the pane underlines its name; a press on it goes back, and so does the row above (m).
+  // A teammate in this session's loop can be shown too; one in a tmux pane of its own (its id its address) and an
+  // ended agent are no press, as the engine shows neither.
+  const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: { ...PANE_PROPS, view: { agentId: 'a1' } }, viewport: DOCKING })
+
+  expect(await pane.find({ key: 'agent-main' })).toMatchObject({ props: { label: '◀ main conversation', hotkey: 'm' } })
+  expect(await pane.find({ type: 'Text', text: /^ Explore$/ })).toMatchObject({ props: { underline: true } })
+  expect(await pane.find({ type: 'Text', text: /^ Plan$/ })).toMatchObject({ props: { underline: false } })
+  expect(await pane.find({ key: 'agent-sleeper@team' })).toBeUndefined()
+  expect(await pane.find({ key: 'agent-a2' })).toBeUndefined()
+  await pane.press({ key: 'agent-a1' })
+  await pane.press({ key: 'agent-main' })
+  await pane.press({ key: 'agent-a3' })
+  expect(ui.viewed).toEqual(['a1', null, null, 'a3'])
+  await pane.unmount()
+})
+
+test('a subagent taken up again counts its time and calls from its new run, not from its first', LIST, async ($, on) => {
+  let status: AgentInfo['status'] = 'running'
+  const clock = world(on, '/w/app', REPO, ['/w/app/.git'], () => [agent('agent-scan', 'Explore', 'scan', status)])
+
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('tool.call', () => ({ result: {} as never, text: 'ok' }))
+  on('agent.spawn', ($, e) => ({ model: 'claude-haiku-4-5', agentId: e.resume?.agentId ?? 'agent-scan' }))
+  await $.session.start(START)
+  await $.turn.start({ text: 'scan it', turnId: 'turn_1' })
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 'toolu_a', prompt: 'Scan the repository', description: 'scan', subagentType: 'Explore' })
+  await $.tool.call({ tool: 'Read', file_path: '/w/app/a.ts', agentId: 'agent-scan' } as never)
+  await clock.advance(40_000)
+  status = 'completed'
+  await $.turn.complete({ ...TURN, turnId: 'sub_1', agentId: 'agent-scan', reason: 'answer' })
+  await $.turn.complete({ ...TURN, durationMs: 40_000, reason: 'answer' })
+  await clock.advance(60_000)
+
+  // A SendMessage in the next turn takes it up again.
+  status = 'running'
+  await $.turn.start({ text: 'ask it more', turnId: 'turn_2' })
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 'toolu_b', prompt: 'And the tests?', description: 'scan', subagentType: 'Explore', resume: { agentId: 'agent-scan' } })
+  const band = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+
+  expect((await band.findAll({ type: 'Text', text: /^↳ ./ })).map(row => row.text)).toEqual(['↳ ● Explore  scan  · 0s'])
+  await band.unmount()
+})
+
+test('a subagent woken when its own background work ends counts on from its first run', LIST, async ($, on) => {
+  let status: AgentInfo['status'] = 'running'
+  const clock = world(on, '/w/app', REPO, ['/w/app/.git'], () => [agent('agent-scan', 'Explore', 'scan', status)])
+
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('tool.call', () => ({ result: {} as never, text: 'ok' }))
+  on('agent.spawn', ($, e) => ({ model: 'claude-haiku-4-5', agentId: e.resume?.agentId ?? 'agent-scan' }))
+  await $.session.start(START)
+  await $.turn.start({ text: 'scan it', turnId: 'turn_1' })
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 'toolu_a', prompt: 'Scan the repository', description: 'scan', subagentType: 'Explore' })
+  await $.tool.call({ tool: 'Bash', command: 'sleep 40', run_in_background: true, agentId: 'agent-scan' } as never)
+  await clock.advance(8_000)
+  // Its run stops with its shell still running: it waits, it has not ended.
+  status = 'waiting'
+  await $.turn.complete({ ...TURN, turnId: 'sub_1', agentId: 'agent-scan', reason: 'answer' })
+  await $.turn.complete({ ...TURN, durationMs: 8_000, reason: 'answer' })
+  await clock.advance(40_000)
+
+  // The shell ends and the engine wakes it, as a resume with no message.
+  status = 'running'
+  await $.agent.spawn({ ...SPAWN, tool_use_id: 'toolu_a', prompt: '', description: 'scan', subagentType: 'Explore', resume: { agentId: 'agent-scan' } })
+  status = 'completed'
+  await clock.advance(2_000)
+  const band = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+
+  expect((await band.findAll({ type: 'Text', text: /^↳ ./ })).map(row => row.text)).toEqual(['↳ ✓ Explore  scan  · 50s · 1 tools'])
+  await band.unmount()
+})
+
 const MIXED = (): AgentInfo[] => [
   agent('a1', 'Explore', 'one', 'running'),
   agent('a2', 'Explore', 'two', 'running'),
@@ -338,6 +448,40 @@ test('turned off, the HUD shows no subagents and does not ask for them', { optio
   expect(await band.find({ type: 'Text', text: /^↳/ })).toBeUndefined()
   expect(asked).toBe(0)
   await band.unmount()
+})
+
+test("the subagent panel's rows are written for the plugin's script: a JSON line for each subagent listed, emptied with none, and gone with the session", async ($, on) => {
+  const ui = paneWorld()
+  let agents = [agent('a1', 'Explore', 'find the login bug', 'running')]
+  const clock = world(on, '/w/app', REPO, ['/w/app/.git'], () => agents, GHOSTTY, [], {}, ui)
+  const rows = `${DATA}/subagents/sess-A.jsonl`
+  const lines = (): unknown[] => (ui.files[rows]?.text ?? '').split('\n').filter(line => line !== '').map(line => JSON.parse(line) as unknown)
+
+  on('session.end', ($, e) => ({ sessionId: e.sessionId }))
+  await $.session.start(START)
+  await clock.advance(2_000)
+  expect(lines()).toEqual([{ id: 'a1', content: 'Explore  find the login bug\u001b[2m · 2s\u001b[22m' }])
+
+  agents = []
+  await clock.advance(2_000)
+  expect(ui.files[rows]?.text).toBe('')
+
+  agents = [agent('a2', 'Plan', 'plan the fix', 'running')]
+  await clock.advance(2_000)
+  expect(lines()).toEqual([{ id: 'a2', content: 'Plan  plan the fix\u001b[2m · 0s\u001b[22m' }])
+
+  await $.session.end({ reason: 'other', sessionId: 'sess-A', resume: { id: 'sess-A' } })
+  expect(ui.files[rows]).toBeUndefined()
+  expect(ui.ran).toContainEqual(['/bin/rm', '-f', '--', rows])
+})
+
+test('with the subagents off, no rows are written for the panel, and it keeps its own', { options: { agents: 'off' } }, async ($, on) => {
+  const ui = paneWorld()
+  const clock = world(on, '/w/app', REPO, ['/w/app/.git'], MIXED, GHOSTTY, [], {}, ui)
+
+  await $.session.start(START)
+  await clock.advance(4_000)
+  expect(Object.keys(ui.files).filter(path => path.includes('/subagents/'))).toEqual([])
 })
 
 test('a narrow band gives the sprite room to the text', async ($, on) => {
@@ -458,6 +602,29 @@ test("a subagent's turn ending does not end the main turn's working motion; the 
 
   await $.turn.complete({ ...TURN, reason: 'answer' })
   expect(blits.at(-1)).toBe('idle/frame_001.png')
+  await band.unmount()
+})
+
+test("a subagent's or a teammate's turn starting neither focuses the sprite nor heads a log line; one at work as the main turn ends leaves the sprite to rest", async ($, on) => {
+  const ui = paneWorld()
+  const { clock, blits } = playing(on, ui)
+
+  await $.session.start(START)
+  const band = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+
+  // A background subagent's turn starts within the main turn and outlasts it: the main turn's end rests the sprite.
+  await $.turn.start({ text: 'fix the bug', turnId: 'turn_1' })
+  await $.turn.start({ text: 'Watch the CI run', turnId: 'turn_sub', agentId: 'agent_1' })
+  await $.turn.complete({ ...TURN, reason: 'answer' })
+  expect(blits.at(-1)).toBe('idle/frame_001.png')
+
+  // A teammate's turn between the main ones leaves the sprite resting, and the next main turn's line is headed by its own prompt.
+  await $.turn.start({ text: 'Review the schema', turnId: 'turn_mate', agentId: 'mate_1' })
+  await clock.advance(80 * 3)
+  expect(blits.at(-1)).toMatch(/^idle\//)
+  await $.turn.start({ text: 'ship it', turnId: 'turn_2' })
+  await $.turn.complete({ ...TURN, turnId: 'turn_2', reason: 'answer' })
+  expect(textsOf(ui, 'sess-A')).toEqual(['fix the bug', 'ship it'])
   await band.unmount()
 })
 
@@ -627,7 +794,7 @@ test("/effort's row sets the level at once, max included, which no settings file
   const band = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: BAND })
 
   expect(await rowTwo(band)).toBe(' Opus 5.5  ▰▰▰▰▰ max · $1.50')
-  expect(await band.find({ type: 'Text', text: /^ max$/ })).toMatchObject({ props: { color: '#ef5350', bold: true } })
+  expect(await band.find({ type: 'Text', text: /^ max$/ })).toMatchObject({ props: { color: '#ef5350', weight: 'semibold' } })
   await band.unmount()
 
   // A word that is no level is a reset to the default: the settings tell again.
@@ -694,6 +861,8 @@ test('auto opens the side pane where the screen docks one; while it is docked an
   const first = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: BAND, viewport: DOCKING })
 
   expect(ui.opened).toEqual(['pane-mod'])
+  // Nothing is painted under the pane's body: the terminal's own background shows through it.
+  expect(ui.backgrounds).toEqual(['transparent'])
   await first.unmount()
 
   ui.panes = [SHOWN]
@@ -1368,7 +1537,7 @@ test('the pane heads its first section with the name the session was given, in t
   await $.session.append(commandRow('Session color set to: blue'))
   const blue = await pane()
 
-  expect(await blue.find({ type: 'Text', text: /^plugin-test$/ })).toMatchObject({ props: { bold: true, color: 'blue_FOR_SUBAGENTS_ONLY' } })
+  expect(await blue.find({ type: 'Text', text: /^plugin-test$/ })).toMatchObject({ props: { weight: 'semibold', color: 'blue_FOR_SUBAGENTS_ONLY' } })
   // The first card's border takes the color too.
   expect((await blue.findAll({ type: 'Box' })).find(box => box.props.borderStyle === 'round')?.props.borderColor).toBe('blue_FOR_SUBAGENTS_ONLY')
   await blue.unmount()
@@ -1432,7 +1601,7 @@ test('while a turn runs the pane says what the main thread is doing now, and the
   const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: PANE_PROPS, viewport: DOCKING })
 
   // The turn under way stands on a yellow badge.
-  expect(await pane.find({ type: 'Text', text: /^ ● WORKING $/ })).toMatchObject({ props: { bold: true, backgroundColor: ACCENT } })
+  expect(await pane.find({ type: 'Text', text: /^ ● WORKING $/ })).toMatchObject({ props: { weight: 'semibold', backgroundColor: ACCENT } })
   await pane.unmount()
 
   const band = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'AbovePrompt', props: { ...BAND, isWorking: true } })
@@ -1819,6 +1988,41 @@ test('an invalid first card color counts as auto: a dim yellow, then the color /
   expect(await first()).toMatchObject({ borderColor: ACCENT, borderDimColor: true })
   await $.session.append(commandRow('Session color set to: blue'))
   expect(await first()).toMatchObject({ borderColor: 'blue_FOR_SUBAGENTS_ONLY', borderDimColor: false })
+})
+
+test('a color theme draws the HUD in its tones, and the borders left auto in its colors', { options: { colorTheme: 'one-dark' } }, async ($, on) => {
+  const ui = paneWorld()
+
+  keep(ui, 'sess-A', keptWithTask())
+  working(on, ui)
+  on('classic.SessionStart', () => ({}))
+  await $.session.start(START)
+  await $.classic.SessionStart({ source: 'resume', session_title: 'plugin-test' })
+  await $.turn.start({ text: 'run the tests', turnId: 'turn_1' })
+  const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: PANE_PROPS, viewport: DOCKING })
+  const cards = (await pane.findAll({ type: 'Box' })).filter(box => box.props.borderStyle === 'round')
+
+  expect(cards.map(box => box.props.borderColor)).toEqual(['#61AFEF', '#C678DD', '#4B5263', '#4B5263'])
+  expect(cards[0]?.props.borderDimColor).toBe(true)
+  expect(await pane.find({ type: 'Text', text: /^ ● WORKING $/ })).toMatchObject({ props: { color: '#282C34', backgroundColor: '#61AFEF' } })
+  expect(await pane.find({ type: 'Text', text: /^app$/ })).toMatchObject({ props: { color: '#61AFEF' } })
+  expect(await pane.find({ type: 'Text', text: /^ \(refactor\/global-search\)$/ })).toMatchObject({ props: { color: '#C678DD' } })
+  await pane.unmount()
+})
+
+test('a border a setting colors keeps its color in any theme', { options: { colorTheme: 'darcula', modelColor: 'claude', cardColor: 'auto' } }, async ($, on) => {
+  const ui = paneWorld()
+
+  keep(ui, 'sess-A', keptWithTask())
+  working(on, ui)
+  on('classic.SessionStart', () => ({}))
+  await $.session.start(START)
+  await $.classic.SessionStart({ source: 'resume', session_title: 'plugin-test' })
+  const pane = await $.ui.mount({ plugin: 'pane-mod', surface: 'terminal', component: 'Pane', requestId: 'pane-mod', props: PANE_PROPS, viewport: DOCKING })
+  const cards = (await pane.findAll({ type: 'Box' })).filter(box => box.props.borderStyle === 'round')
+
+  expect(cards.map(box => box.props.borderColor)).toEqual(['#FFC66D', 'claude', '#555555', '#555555'])
+  await pane.unmount()
 })
 
 test('every gauge draws its steps with the characters the settings give, an invalid one left at its default', { options: { barFilled: '#', barEmpty: '🙂' } }, async ($, on) => {
@@ -2260,6 +2464,15 @@ test("the log's Markdown file lists what each turn did: its calls by tool, skill
   )
 })
 
+test("a subagent's row for the panel reads as the band's, its figures dim, and writes no escapes of what it was called", () => {
+  const row = { id: 'a1', name: null, type: 'Explore', description: 'find\nthe bug', state: 'running', seconds: 75, tools: 3, tool: 'Read', isViewable: true } as const
+
+  expect(panelRowOf(row, 8_240)).toBe('Explore  find the bug\u001b[2m · 1m15s · 3 tools · Read · 8.2k tokens\u001b[22m')
+  expect(panelRowOf({ ...row, name: 'scout', description: 'x\u001b[31m', tools: 0, tool: null }, undefined)).toBe('scout \u001b[2mExplore\u001b[22m  x [31m\u001b[2m · 1m15s\u001b[22m')
+  expect(panelRowsText([row], new Map([['a1', 10]]))).toBe(`${JSON.stringify({ id: 'a1', content: panelRowOf(row, 10) })}\n`)
+  expect(panelRowsText([], new Map())).toBe('')
+})
+
 test('the helpers count tools within the cap, keep names once, read errors, MCP names and limit settings', () => {
   const many = Array.from({ length: LOG_CAPS.tools + 2 }, (_, index) => `T${index}`).reduce<Record<string, number>>((tools, tool) => countTool(tools, tool), {})
 
@@ -2274,6 +2487,14 @@ test('the helpers count tools within the cap, keep names once, read errors, MCP 
   expect(errorLine('x'.repeat(200), 10)).toBe(`${'x'.repeat(9)}…`)
   // A control character would take six bytes of the kept JSON: none is kept.
   expect(promptOf('a\u0007b\tc\nd\u001b[0m', 300)).toBe('a b c\nd [0m')
+  // A turn started on task notifications is headed by their summaries, not by their ids and paths.
+  const notice = (id: string, summary: string): string =>
+    `<task-notification>\n<task-id>${id}</task-id>\n<output-file>/private/tmp/t/${id}.output</output-file>\n<status>completed</status>\n<summary>${summary}</summary>\n<result>done</result>\n</task-notification>`
+  expect(askedOf(notice('a1', 'Agent "Run sleep 40 (first)" finished'), 300)).toBe('Agent "Run sleep 40 (first)" finished')
+  expect(askedOf(`${notice('a1', 'Agent "one" finished')}\n${notice('a2', 'Background command "sleep 5" completed')}`, 300)).toBe('Agent "one" finished\nBackground command "sleep 5" completed')
+  expect(askedOf(`${notice('a1', 'Agent "one" finished')}\nWhat did it find?`, 300)).toBe('What did it find?')
+  expect(askedOf(notice('a1', ''), 300)).toBe('')
+  expect(askedOf('Fix <b>this</b>', 300)).toBe('Fix this')
   expect(mcpNameOf('mcp__claude_ai_Claude_Docs__batch')).toBe('claude_ai_Claude_Docs:batch')
   expect(mcpNameOf('Read')).toBeNull()
   expect(recentOf([{ skills: ['a', 'b'], mcp: ['s:x'] }, { skills: ['c', 'a'], mcp: [] }], { skills: ['d'], mcp: ['s:y'] }, 3)).toEqual({ skills: ['d', 'a', 'c'], mcp: ['s:y', 's:x'] })
@@ -2302,7 +2523,13 @@ test('the helpers read HEAD, count hooks and format time, gauges, memory, server
   expect(until(30 * 60 * 60_000, 0)).toBe('1d6h')
   expect(bar(50, 10)).toEqual(['▰▰▰▰▰', '▱▱▱▱▱'])
   expect(bar(0, 10)).toEqual(['', '▱▱▱▱▱▱▱▱▱▱'])
-  expect([0, 59, 60, 89, 90, 100].map(tint)).toEqual(['#66bb6a', '#66bb6a', '#fbc02d', '#fbc02d', '#ef5350', '#ef5350'])
+  expect([0, 59, 60, 89, 90, 100].map(percent => tint(percent))).toEqual(['#66bb6a', '#66bb6a', '#fbc02d', '#fbc02d', '#ef5350', '#ef5350'])
+  // A theme keeps what each color says in its own tones.
+  expect([0, 60, 90].map(percent => tint(percent, PALETTES['one-dark']))).toEqual(['#98C379', '#E5C07B', '#E06C75'])
+  expect(effortTint('xhigh', PALETTES.darcula)).toBe('#CC7832')
+  expect(['Darcula', ' github-dark ', 'solarized', undefined].map(value => colorThemeOf(value))).toEqual(['darcula', 'github-dark', 'default', 'default'])
+  // Every color a palette has is one a drawing takes.
+  for (const palette of Object.values(PALETTES)) for (const color of Object.values(palette)) expect(colorOf(color, null)).not.toBeNull()
   expect(spriteFrames('idle', [{ name: 'b.png', kind: 'file' }, { name: 'a.PNG', kind: 'file' }, { name: 'x.gif', kind: 'file' }, { name: 'c.png', kind: 'dir' }])).toEqual(['idle/a.PNG', 'idle/b.png'])
   expect(framesFor('working', { ...NO_FRAMES, working: ['working/a.png'], idle: ['idle/a.png'] })).toEqual(['working/a.png'])
   expect(framesFor('complete', { ...NO_FRAMES, working: ['working/a.png'], idle: ['idle/a.png'] })).toEqual(['idle/a.png'])

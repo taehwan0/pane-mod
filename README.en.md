@@ -30,7 +30,7 @@ echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/
 ```
 
 - `/pane-mod` opens the pane; `/pane-mod auto|band|pane|hint` changes the layout for the session.
-- Needs Claude Code 2.1.292 or later. Sprites were seen in Ghostty and cmux; Orca (1.4.221) does not draw them.
+- Needs Claude Code 2.1.319 or later. Sprites were seen in Ghostty and cmux; Orca (1.4.221) does not draw them.
 - The character in the demo is only an example (see "License").
 - The Korean [README.md](README.md) is the primary, complete reference; this English edition covers the same features more briefly.
 
@@ -79,7 +79,7 @@ Pane (docked on the right, cards in rounded borders):
 
 ## Requirements
 
-- Built and tested on Claude Code 2.1.292 and later, a version that loads mods (`modules` in `hooks/hooks.json`).
+- Needs Claude Code 2.1.319 or later; tested on 2.1.322. Opening a subagent's transcript from its row (`$.ui.view`) needs 2.1.300, and the subagent panel's rows drawn by the plugin's own script need 2.1.319.
 - The sprite shows only where Claude Code can draw pictures: terminals that support Unicode placeholders of the kitty graphics protocol. Tested in Ghostty and cmux; the official docs say kitty 0.28 and later draws it too.
 - **Orca draws no sprite as of its current version (1.4.221).** Its terminal (xterm.js) neither answers the kitty graphics query nor supports Unicode placeholders, so Claude Code draws the `alt` text instead. pane-mod notices this and gives the sprite's room to the text.
 - No build step: Claude Code reads `hooks/register.tsx` as it is.
@@ -126,9 +126,10 @@ Choose them as you install (INSTALL.md, chapter 2), and change them afterwards a
 | `logSessions` | `30` | Sessions whose logs are kept, the most recently saved first. `0`: no limit. |
 | `logDays` | `14` | Days a log is kept after its last save. `0`: no limit. |
 | `paneOrder` | `tasks,agents,context,recent,changes,log` | The order of the cards under the first card and the model card, separated by commas or spaces, in any case. Unknown and repeated names are ignored, and cards not named follow in their default order, so no card goes missing; hide one with its `show…` setting. With `log` anywhere but last, the wheel does not page the log. |
-| `sessionColor` | `auto` | The first card's border and the session's name. `auto` follows `/color` (a dim yellow with none); a theme key or `#rrggbb` fixes it. |
-| `modelColor` | `claude` | The model card's border: a theme key or `#rrggbb`. |
-| `cardColor` | `subtle` | The other cards' borders: a theme key or `#rrggbb`. |
+| `colorTheme` | `default` | The HUD's color theme: `default` its own colors; `darcula`, `one-dark` and `github-dark` the tones of IntelliJ's Darcula, Atom's One Dark and GitHub's dark theme. It colors the working badge, the project and branch, the gauges, effort, the permission mode, the marks of subagents, tasks and log lines, the lines a change adds and removes, and the borders whose settings below are `auto` (see "Color themes" below). |
+| `sessionColor` | `auto` | The first card's border and the session's name. `auto` follows `/color` (the color theme's accent, dim, with none); a theme key or `#rrggbb` fixes it. |
+| `modelColor` | `auto` | The model card's border: `auto` the color theme's (Claude's orange, the theme key `claude`, in the default theme), or a theme key or `#rrggbb` whatever the theme. An invalid value counts as `auto`. |
+| `cardColor` | `auto` | The other cards' borders: `auto` the color theme's (Claude Code's gray, the theme key `subtle`, in the default theme), or a theme key or `#rrggbb` whatever the theme. An invalid value counts as `auto`. |
 | `barFilled` | `▰` | The character of a gauge's filled steps: one character one cell wide (no emoji, wide, space, control or combining character). |
 | `barEmpty` | `▱` | The character of a gauge's empty steps, on the same terms. |
 | `spriteSource` | `auto` | How frames reach the terminal: `auto` sends Ghostty and kitty the PNG's path and any other terminal its data (and switches to data once a path is refused); `file` or `bytes` fixes it. |
@@ -136,6 +137,21 @@ Choose them as you install (INSTALL.md, chapter 2), and change them afterwards a
 | `soundDir` | (empty) | Your sound folder. Empty: `assets/sounds/` in the plugin's folder, which the repository does not hold. |
 
 The theme keys are `text`, `inverseText`, `inactive`, `subtle`, `suggestion`, `remember`, `success`, `error`, `warning`, `merged`, `claude`, `permission`, `planMode`, `autoAccept`, `promptBorder`, `bashBorder`, `ide`, `diffAdded`, `diffRemoved`, `diffAddedDimmed`, `diffRemovedDimmed`, `diffAddedWord` and `diffRemovedWord`, drawn to suit your theme. An invalid color or character falls back to its default, so a typo never gets the HUD refused.
+
+### Color themes
+
+`colorTheme` changes every color the HUD draws at once. What a color means stays the same in every theme (green to spare, yellow filling up, red near a limit); only its tone follows the theme. The pane shows the terminal's own background, so all three themes are picked to read well on a dark one.
+
+| Theme | Accent (badge, project) | Branch | Model card | Other cards, empty steps | Gauges (to spare · filling · near) |
+|---|---|---|---|---|---|
+| `default` | `#F7D02C` | `#ba68c8` | `claude` | `subtle` | `#66bb6a` · `#fbc02d` · `#ef5350` |
+| `darcula` | `#FFC66D` | `#9876AA` | `#CC7832` | `#555555` | `#629755` · `#BBB529` · `#FF6B68` |
+| `one-dark` | `#61AFEF` | `#C678DD` | `#C678DD` | `#4B5263` | `#98C379` · `#E5C07B` · `#E06C75` |
+| `github-dark` | `#58A6FF` | `#D2A8FF` | `#F78166` | `#484F58` | `#3FB950` · `#D29922` · `#F85149` |
+
+- Only a card whose border setting (`sessionColor`, `modelColor`, `cardColor`) is `auto` takes the theme's color; a card given a color keeps it in any theme.
+- The session color `/color` picks comes before the theme. With none, the first card's border is the theme's accent, dim.
+- The default theme's `claude` and `subtle` are Claude Code theme keys and follow its dark or light theme; the other themes' colors are fixed `#rrggbb` hexes.
 
 ### Changing settings
 
@@ -158,7 +174,7 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 
 | When (`layout: auto`) | What happens |
 |---|---|
-| Fullscreen view, wide enough | A pane (56 columns asked) docks on the right: a first card the pane's width with the session, the turn under way and a small sprite (12×6), then the model card (model, effort, usage, cost) and the tasks, subagents, context, recent, changes and log cards. The band stays empty, or holds one line with `bandWithPane: line`. |
+| Fullscreen view, wide enough | A pane (56 columns asked, which Claude Code keeps within 45% of the terminal) docks on the right, with no background of its own: the terminal's shows through. It holds a first card the pane's width with the session, the turn under way and a small sprite (12×6), then the model card (model, effort, usage, cost) and the tasks, subagents, context, recent, changes and log cards. The band stays empty, or holds one line with `bandWithPane: line`. |
 | A narrower window, or another pane's tab in front | The pane is seen not to be placed or shown, and the band spreads into the five-row HUD. |
 | Not fullscreen | No pane opens; one seated above the prompt closes, and the band draws. |
 | You closed the pane | It does not open again by itself; `/pane-mod` opens it. |
@@ -172,7 +188,7 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 
 ## The work log
 
-- **One line per finished turn**: when, how it ended (✓ answered, ⏹ stopped, ⊘ refused, ✗ failed), how long, the prompt's first words, what was done (edits, bash, reads, subagents, failed calls `err`, denied calls `denied`), output tokens and cache hits. The newest five lines show; `▲ older` / `▼ newer` (or `o` / `n` while the pane has the keyboard) page by five, and the wheel over the log, while it is the pane's last card, moves it a line a tick and leaves the pane where it is.
+- **One line per finished turn**: when, how it ended (✓ answered, ⏹ stopped, ⊘ refused, ✗ failed), how long, the prompt's first words (for a turn started on a background subagent's or shell's notification, that notification's summary), what was done (edits, bash, reads, subagents, failed calls `err`, denied calls `denied`), output tokens and cache hits. The newest five lines show; `▲ older` / `▼ newer` (or `o` / `n` while the pane has the keyboard) page by five, and the wheel over the log, while it is the pane's last card, moves it a line a tick and leaves the pane where it is.
 - **Search**: with more than five lines, a `find` field shows under the card's title. Click it, or press `s` while the pane has the keyboard, and type: the lines with every word typed (in any case) show, newest first. It searches the prompts, edited files, bash commands, tools, skills, MCP tools, subagents and failed calls. `x: clear` shows every line again. While the field has the focus every printable key goes to it; leave it with Tab, as Esc closes the pane.
 - **Detail**: the `▸` before a line opens what it did in full: the prompt (up to 300 characters), edited files, commands, calls by tool, skills, MCP tools, subagents (each with how and when it ended), failed calls, approvals asked and calls denied. `c: copy prompt` copies the prompt.
 - **Open as a file**: `f: open file` writes the session's log as Markdown to `~/.claude/plugins/data/pane-mod-pane-mod/logs/<session id>.md` and opens it with the system's app (`open`, else `xdg-open`).
@@ -186,6 +202,12 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 - **A row opens the file's diff** over the whole pane (so do `1` to `9` while the pane has the keyboard), drawn by Claude Code's `Code` element (`format: 'diff'`) with line numbers, `+`/`-` marks, colors, and syntax highlighting by the file's extension. Its changes show with three lines around each; `w: whole file` shows the whole file with the changed lines marked, and `w: changes only` goes back. `p: prev` and `n: next` move between the files, `b: ◀ back` returns to the cards (Esc closes the pane). The wheel scrolls the pane.
 - **What it compares**: the file before the turn first changed it (the tool's `originalFile`, empty for a file a Write created) with the file read back after its last change, so many edits of one file make one diff. Files changed through Bash (`sed`, formatters, `git checkout`) are not seen.
 - **Limits**: the texts stay in memory only, so a reload or `/clear` empties the list, and turns of past sessions have no diff. A file over 512 KiB is listed with `?` and no diff. One diff draws up to 80,000 characters; a whole file longer than that shows its changes.
+
+## Subagents
+
+- **A row opens the subagent's transcript**: press a row of the subagents card (or of the band's list with `agents: list`) and Claude Code's main view shows that subagent's transcript (`$.ui.view`), as picking it from Claude Code's task list does. Its name is underlined while it shows. Press the row again, or `m: ◀ main conversation` above the list (`m` while the pane has the keyboard), to go back. A row Claude Code shows no transcript for is no press: an ended subagent, and an agent-team teammate running in a tmux server of its own (`teammateMode: tmux`); a teammate running in this session can be opened.
+- **The subagent panel's rows**: the plugin's `settings.json` sets Claude Code's `subagentStatusLine`, so each row of the subagent panel under the prompt reads as the band's: the name with the type dim after it, the task, then how long it has run, its tool calls, the tool it runs now, and its tokens. The tokens are counted as Claude Code's own row counts them: the last request's input (cache included) with every output so far; none before a request of it is seen.
+- The mod checks the rows every 2 seconds while there are subagents, writes them where they changed to `subagents/<session id>.jsonl` in its data folder, and removes the file as the session ends; Claude Code runs `scripts/subagent-rows.sh` on each refresh of the panel, which prints that file. Claude Code applies these rows to plain subagents only (the Agent tool's `local_agent` tasks): agent-team teammates keep its default rows. A `subagentStatusLine` of your own in your settings wins. With `agents: off` nothing is written and the panel draws its own rows, as it does for a subagent pane-mod no longer lists.
 
 ## Session name and color
 
@@ -208,7 +230,7 @@ A warning stands for a minute and is named in the line of an approval dialog ope
 | Claude's state | Motion |
 |---|---|
 | Between turns | `idle`, looped |
-| A model turn under way (`turn.start` to `turn.complete`, including slash commands that open one, such as skills) | `working`, looped |
+| A model turn under way (the main conversation's `turn.start` to `turn.complete`, including slash commands that open one, such as skills; a subagent's or teammate's turn does not count, so the main turn's end rests the sprite though a background subagent works on) | `working`, looped |
 | A one-off command that opens no model turn (`/effort`, `/reload-plugins`) | stays `idle` |
 | A turn's end (answered, stopped, refused, API error) | back to `idle` at once |
 
@@ -259,10 +281,12 @@ Usage, turns and subagents are read every 2 seconds; branch, hooks, tools and md
 ## What this mod does on your computer
 
 - **No network requests** (`$.http` is never called).
-- **Two external programs, only**: `f: open file` opens the log's Markdown file (`/usr/bin/open`, else `xdg-open`); saving a log removes the log files past the limits with `/bin/rm -f -- <files>`, only log files in the data folder's `sessions/`. `claude plugin validate .` lists them as `$.process.run (via openLogFile, removeKept)`.
+- **Two external programs, only**: `f: open file` opens the log's Markdown file (`/usr/bin/open`, else `xdg-open`); saving a log removes the log files past the limits with `/bin/rm -f -- <files>`, and a session that wrote rows for the subagent panel removes that file the same way as it ends: only files in the data folder's `sessions/` and `subagents/`. `claude plugin validate .` lists them as `$.process.run (via openLogFile, removeKept)`.
+- **The subagent panel's script**: the plugin's `settings.json` sets Claude Code's `subagentStatusLine`, so Claude Code runs `sh scripts/subagent-rows.sh` on each refresh of the subagent panel. It reads only the session id from its input and prints the data folder's `subagents/<session id>.jsonl` where there is one, looking in `~/.claude/plugins/data/pane-mod-pane-mod` when the plugin's own folder Claude Code names has none (a `--plugin-dir` copy is named `pane-mod-inline` there, but its mod writes to the default folder); it reads or writes nothing else.
+- **The main view**: pressing a subagent's row shows its transcript in the main view (`$.ui.view`); nothing else changes the view.
 - **Slash command rows**: it reads command output rows (`session.append`, `door: 'command'`) only for `/effort`'s level, `/rename`'s name and `/color`'s color.
 - **Settings hook events** (`PermissionRequest`, `Notification`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`) are observed for the line under approval dialogs and the log, and passed on unchanged.
-- **Files read**: `.git` and `HEAD`, the sprite and sound folders' listings, sprite PNGs (with the `png` source), clips from `soundDir`, its own log files and their folder, and the files Edit or Write changed (for the changes card; their text stays in memory). **Files written**: each session's log file (as a turn ends, and as a session ends mid-turn), the log's Markdown file when you ask for it, and log files emptied where `rm` cannot run.
+- **Files read**: `.git` and `HEAD`, the sprite and sound folders' listings, sprite PNGs (with the `png` source), clips from `soundDir`, its own log files and their folder, and the files Edit or Write changed (for the changes card; their text stays in memory). **Files written**: each session's log file (as a turn ends, and as a session ends mid-turn), the subagent panel's rows while there are subagents (`subagents/<session id>.jsonl`: each one's name, type, task, time, tool calls, tool running and tokens), the log's Markdown file when you ask for it, and files emptied where `rm` cannot run.
 - **The log holds** each turn's prompt (up to 300 characters, tags removed), edited file names and the first line of commands run, the first line of failed calls' errors (up to 100 characters), the targets of calls asked for or denied, calls by tool, skill and MCP tool names, subagents' types and tasks, times, token counts and cache hits, the session's color, tasks and totals. It never leaves your machine.
 - **Clipboard**: written only when you press `copy prompt` (`$.ui.copy`).
 - **Sprites**: Ghostty and kitty read the PNG files themselves (the `file` source); other terminals are sent each PNG's data once read (the `png` source). When the engine reports drawing the `alt` instead, a refused path switches to data, and a terminal that cannot draw pictures has the sprite hidden.
@@ -276,7 +300,9 @@ Usage, turns and subagents are read every 2 seconds; branch, hooks, tools and md
 | `.claude-plugin/marketplace.json` | Makes this repository a marketplace (`source: "./"`) |
 | `hooks/hooks.json` | The hooks module's path (`./register.tsx`) |
 | `hooks/register.tsx` | Gathering, asset folders, sprite motions, sounds, alerts, the work log, drawing the band and the pane |
-| `hooks/format.ts` | Pure functions: gauges, colors, times, git HEAD, frame and clip lists, the log's shape, search and limits, line diffs |
+| `hooks/format.ts` | Pure functions: gauges, colors, times, git HEAD, frame and clip lists, the log's shape, search and limits, line diffs, the subagent panel's rows |
+| `settings.json` | Settings applied while the plugin is on: Claude Code's `subagentStatusLine`, set to `scripts/subagent-rows.sh` |
+| `scripts/subagent-rows.sh` | What Claude Code runs to draw the subagent panel: it prints this session's rows the mod wrote to its data folder |
 | `types/index.d.ts` | Shared types and the `$.state` contract |
 | `tests/pane-mod.test.tsx` | Tests (`claude plugin test .`) |
 | `docs/sprite-states.md` | States that could be told apart, sprites needed, how to make them (Korean) |

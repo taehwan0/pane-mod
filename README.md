@@ -30,7 +30,7 @@ echo '{"spriteDir":"/Users/me/.config/pane-mod/my-character","soundDir":"/Users/
 ```
 
 - `/pane-mod`로 pane을 열고, `/pane-mod auto|band|pane|hint`로 이번 세션의 레이아웃을 바꿉니다.
-- Claude Code 2.1.292 이상이 필요합니다. 스프라이트는 Ghostty와 cmux에서 확인했고, Orca(1.4.221)에서는 그려지지 않습니다.
+- Claude Code 2.1.319 이상이 필요합니다. 스프라이트는 Ghostty와 cmux에서 확인했고, Orca(1.4.221)에서는 그려지지 않습니다.
 - 데모의 캐릭터는 예시입니다(아래 "라이선스" 참고).
 - 설정 항목, 문제 해결, AI에게 설치를 맡기는 방법은 [INSTALL.md](INSTALL.md)에 있습니다.
 
@@ -79,7 +79,7 @@ pane (오른쪽에 붙을 때, 카드는 둥근 테두리):
 
 ## 요구 사항
 
-- Claude Code 2.1.292 이상에서 만들고 시험했습니다. mod(`hooks/hooks.json`의 `modules`)를 지원하는 버전이어야 합니다.
+- Claude Code 2.1.319 이상이 필요하며, 2.1.322에서 시험했습니다. 서브에이전트 행을 눌러 transcript를 여는 기능(`$.ui.view`)은 2.1.300부터, 플러그인 폴더의 스크립트로 서브에이전트 패널의 행을 그리는 기능은 2.1.319부터 동작합니다.
 - 스프라이트는 Claude Code가 그림을 그릴 수 있다고 판단한 터미널에서만 보입니다. Claude Code는 kitty graphics protocol의 유니코드 placeholder 방식으로 그림을 그리므로, 이 방식을 지원하는 터미널이어야 합니다. Ghostty와 cmux에서 동작하는 것을 확인했습니다. 공식 문서에 따르면 kitty 0.28 이상에서도 그려집니다.
 - **Orca에서는 현재 버전(1.4.221) 기준으로 스프라이트가 보이지 않습니다.** Orca의 터미널(xterm.js)은 kitty 이미지를 직접 배치하는 방식은 그리지만, 유니코드 placeholder를 지원하지 않고 kitty 그래픽 지원 질의에도 응답하지 않습니다. Claude Code는 이런 터미널에서 그림 대신 `alt`를 그립니다. 이때 pane-mod는 이를 감지해서 스프라이트 자리와 여백을 없애고 글자 정보만 표시합니다.
 - 빌드 단계는 없습니다. Claude Code가 `hooks/register.tsx`를 그대로 읽어서 실행합니다.
@@ -126,16 +126,32 @@ mod는 `statusLine` 영역에 그릴 수 없습니다. 그래서 HUD는 오른�
 | `logSessions` | `30` | 로그를 보관하는 세션 수입니다. 가장 최근에 저장한 세션부터 남깁니다. `0`이면 세션 수를 제한하지 않습니다. |
 | `logDays` | `14` | 마지막으로 저장한 뒤 로그를 보관하는 날수입니다. 이 기간이 지나면 그 세션의 로그 파일을 지웁니다. `0`이면 기간을 제한하지 않습니다. |
 | `paneOrder` | `tasks,agents,context,recent,changes,log` | pane에서 첫 카드와 모델 카드 아래에 놓는 카드의 순서입니다. `tasks`, `agents`, `context`, `recent`, `changes`, `log`를 쉼표나 공백으로 구분해서 적고, 대소문자는 가리지 않습니다. 모르는 이름과 중복된 이름은 무시하고, 적지 않은 카드는 기본 순서대로 뒤에 붙입니다. 그래서 순서를 바꿔도 카드가 사라지지 않으며, 카드를 숨길 때는 `show…` 설정을 씁니다. `log`를 마지막에 두지 않으면 휠로 로그를 넘길 수 없습니다(아래 "로그 스크롤" 참고). |
-| `sessionColor` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 쓰고, 고른 색이 없으면 테두리를 흐린 노랑으로 칠합니다. 테마 키나 `#rrggbb` 형식의 색을 적으면 `/color`와 관계없이 그 색으로 고정합니다. 올바르지 않은 값은 `auto`로 처리합니다. |
-| `modelColor` | `claude` | 모델 카드의 테두리 색입니다. 테마 키나 `#rrggbb` 형식의 색을 적으며, 올바르지 않은 값은 `claude`(Claude 주황)로 처리합니다. |
-| `cardColor` | `subtle` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. 테마 키나 `#rrggbb` 형식의 색을 적으며, 올바르지 않은 값은 `subtle`(테마의 회색)로 처리합니다. |
+| `colorTheme` | `default` | HUD의 색 테마입니다. `default`는 pane-mod의 원래 색이고, `darcula`, `one-dark`, `github-dark`는 IntelliJ의 Darcula, Atom의 One Dark, GitHub의 어두운 테마의 색조를 씁니다. WORKING 배지, 프로젝트와 branch, 게이지, effort, 권한 모드, 서브에이전트·작업·로그의 표시, 바뀐 줄 수의 색과, 아래 테두리 설정이 `auto`인 카드의 테두리가 함께 바뀝니다(아래 "색 테마" 참고). |
+| `sessionColor` | `auto` | pane 첫 카드의 테두리와 세션 이름의 색입니다. `auto`는 `/color`로 고른 색을 쓰고, 고른 색이 없으면 테두리를 색 테마의 강조색(기본 테마에서는 노랑)으로 흐리게 칠합니다. 테마 키나 `#rrggbb` 형식의 색을 적으면 `/color`와 관계없이 그 색으로 고정합니다. 올바르지 않은 값은 `auto`로 처리합니다. |
+| `modelColor` | `auto` | 모델 카드의 테두리 색입니다. `auto`는 색 테마의 색(기본 테마에서는 Claude 주황, 테마 키 `claude`)을 씁니다. 테마 키나 `#rrggbb` 형식의 색을 적으면 테마와 관계없이 그 색을 쓰며, 올바르지 않은 값은 `auto`로 처리합니다. |
+| `cardColor` | `auto` | 나머지 카드(tasks, subagents, context, recent, changes, log)의 테두리 색입니다. `auto`는 색 테마의 색(기본 테마에서는 Claude Code 테마의 회색, 테마 키 `subtle`)을 씁니다. 테마 키나 `#rrggbb` 형식의 색을 적으면 테마와 관계없이 그 색을 쓰며, 올바르지 않은 값은 `auto`로 처리합니다. |
 | `barFilled` | `▰` | 모든 게이지(effort, ctx, 5h, 7d)에서 채워진 칸을 그리는 문자입니다. 폭이 한 칸인 문자 하나여야 하며, 이모지, 전각 문자, 공백, 제어 문자, 결합 문자는 받지 않습니다. 올바르지 않은 값은 기본값으로 처리합니다. |
 | `barEmpty` | `▱` | 모든 게이지에서 빈칸을 그리는 문자입니다. 조건은 `barFilled`와 같으며, 올바르지 않은 값은 기본값으로 처리합니다. |
 | `spriteSource` | `auto` | 스프라이트 프레임을 터미널에 보내는 방식입니다. `auto`는 Ghostty와 kitty에는 PNG 파일 경로를, 그 밖의 터미널에는 PNG 데이터를 보냅니다. 파일 경로가 거부되면 그때부터 데이터로 보냅니다. `file`과 `bytes`로 고정할 수도 있습니다. |
 | `spriteDir` | (빈 값) | 직접 준비한 스프라이트 폴더입니다. 비워 두면 플러그인 폴더의 `assets/`를 찾습니다(저장소에는 들어 있지 않습니다). 폴더 구조는 아래 "스프라이트와 소리 파일"에 있습니다. |
 | `soundDir` | (빈 값) | 직접 준비한 소리 폴더입니다. 비워 두면 플러그인 폴더의 `assets/sounds/`를 찾습니다(저장소에는 들어 있지 않습니다). |
 
-색 설정(`sessionColor`, `modelColor`, `cardColor`)에는 `#rrggbb` 형식의 색이나 Claude Code의 테마 키를 적습니다. 테마 키로 적은 색은 사용자가 고른 테마(다크, 라이트 등)에 맞게 그려지며, 대소문자는 가리지 않습니다. 쓸 수 있는 테마 키는 `text`, `inverseText`, `inactive`, `subtle`, `suggestion`, `remember`, `success`, `error`, `warning`, `merged`, `claude`, `permission`, `planMode`, `autoAccept`, `promptBorder`, `bashBorder`, `ide`, `diffAdded`, `diffRemoved`, `diffAddedDimmed`, `diffRemovedDimmed`, `diffAddedWord`, `diffRemovedWord`입니다. 게이지의 채워진 칸 색(사용률에 따른 초록, 노랑, 빨강)과 ` ● WORKING ` 배지의 색은 바꿀 수 없습니다.
+색 설정(`sessionColor`, `modelColor`, `cardColor`)에는 `#rrggbb` 형식의 색이나 Claude Code의 테마 키를 적습니다. 테마 키로 적은 색은 사용자가 고른 테마(다크, 라이트 등)에 맞게 그려지며, 대소문자는 가리지 않습니다. 쓸 수 있는 테마 키는 `text`, `inverseText`, `inactive`, `subtle`, `suggestion`, `remember`, `success`, `error`, `warning`, `merged`, `claude`, `permission`, `planMode`, `autoAccept`, `promptBorder`, `bashBorder`, `ide`, `diffAdded`, `diffRemoved`, `diffAddedDimmed`, `diffRemovedDimmed`, `diffAddedWord`, `diffRemovedWord`입니다. 게이지의 채워진 칸 색(사용률에 따른 초록, 노랑, 빨강)과 ` ● WORKING ` 배지의 색은 하나씩 바꿀 수 없고, `colorTheme`으로 함께 바꿉니다.
+
+### 색 테마
+
+`colorTheme`은 HUD에서 색을 쓰는 곳을 한꺼번에 바꿉니다. 초록은 여유, 노랑은 주의, 빨강은 한도 근처처럼 색이 뜻하는 바는 어느 테마에서나 같고, 색조만 그 테마에 맞춥니다. pane은 터미널의 배경을 그대로 쓰므로, 세 테마 모두 어두운 배경에서 잘 보이는 색으로 골랐습니다.
+
+| 테마 | 강조색 (배지, 프로젝트) | branch | 모델 카드 | 나머지 카드, 빈칸 | 게이지 (여유 · 주의 · 위험) |
+|---|---|---|---|---|---|
+| `default` | `#F7D02C` | `#ba68c8` | `claude` | `subtle` | `#66bb6a` · `#fbc02d` · `#ef5350` |
+| `darcula` | `#FFC66D` | `#9876AA` | `#CC7832` | `#555555` | `#629755` · `#BBB529` · `#FF6B68` |
+| `one-dark` | `#61AFEF` | `#C678DD` | `#C678DD` | `#4B5263` | `#98C379` · `#E5C07B` · `#E06C75` |
+| `github-dark` | `#58A6FF` | `#D2A8FF` | `#F78166` | `#484F58` | `#3FB950` · `#D29922` · `#F85149` |
+
+- 테두리 설정(`sessionColor`, `modelColor`, `cardColor`)이 `auto`인 카드만 테마의 색을 따릅니다. 색을 적은 카드는 테마와 관계없이 그 색을 씁니다.
+- `/color`로 고른 세션 색은 테마보다 우선합니다. 고른 색이 없으면 첫 카드의 테두리는 테마의 강조색을 흐리게 칠합니다.
+- 기본 테마의 `claude`·`subtle`은 Claude Code의 테마 키라서 다크·라이트 테마에 맞게 바뀝니다. 다른 테마의 색은 `#rrggbb`로 고정되어 있습니다.
 
 ### 설정 바꾸기
 
@@ -166,7 +182,7 @@ echo '{"showContext":"true","agents":"list"}' | claude plugin configure pane-mod
 
 | 상황 (`layout: auto`) | 동작 |
 |---|---|
-| 전체 화면 보기, 폭 충분 | 오른쪽에 pane(요청 폭 56칸)을 붙입니다. pane에는 pane 폭 전체를 쓰는 첫 카드에 세션·진행 중인 턴과 오른쪽의 작은 스프라이트(12×6칸)를 함께 담고, 그 아래에 모델 카드(모델, effort, 사용량, 비용), tasks, subagents, context, recent, changes, log 카드를 차례로 그립니다. 모델 카드 아래 카드의 순서는 `paneOrder`로 바꿀 수 있습니다. 카드는 둥근 테두리(`Box`의 `borderStyle: 'round'`)로 관심사를 묶으며, 테두리 색은 `sessionColor`, `modelColor`, `cardColor`로 바꿉니다. 내용이 없거나 설정이 꺼진 카드는 그리지 않습니다. 폭이 좁으면 잘라 내지 않고 줄을 바꿉니다. band는 기본으로 비워 두고, `bandWithPane: line`이면 한 줄 요약(`━━  모델  effort · ctx · 5h ·  ● WORKING  경과 시간 · 서브에이전트`)을 그립니다. |
+| 전체 화면 보기, 폭 충분 | 오른쪽에 pane(요청 폭 56칸, Claude Code가 터미널 폭의 45%를 넘지 않게 줄임)을 붙입니다. pane의 바탕은 따로 칠하지 않으므로 터미널의 배경색이 그대로 보입니다. pane에는 pane 폭 전체를 쓰는 첫 카드에 세션·진행 중인 턴과 오른쪽의 작은 스프라이트(12×6칸)를 함께 담고, 그 아래에 모델 카드(모델, effort, 사용량, 비용), tasks, subagents, context, recent, changes, log 카드를 차례로 그립니다. 모델 카드 아래 카드의 순서는 `paneOrder`로 바꿀 수 있습니다. 카드는 둥근 테두리(`Box`의 `borderStyle: 'round'`)로 관심사를 묶으며, 테두리 색은 `sessionColor`, `modelColor`, `cardColor`로 바꿉니다. 내용이 없거나 설정이 꺼진 카드는 그리지 않습니다. 폭이 좁으면 잘라 내지 않고 줄을 바꿉니다. band는 기본으로 비워 두고, `bandWithPane: line`이면 한 줄 요약(`━━  모델  effort · ctx · 5h ·  ● WORKING  경과 시간 · 서브에이전트`)을 그립니다. |
 | 창을 좁히거나 다른 pane 탭이 앞에 있음 | pane이 배치되지 않거나 가려진 것을 감지하고, band가 5행 HUD로 펼쳐집니다. |
 | 전체 화면이 아닌 보기 | pane을 열지 않습니다. 열린 pane이 입력창 위 블록으로 놓이면 닫고 band를 씁니다. |
 | pane을 직접 닫음 | 다시 자동으로 열지 않습니다. `/pane-mod`로 다시 엽니다. |
@@ -184,14 +200,14 @@ pane의 카드:
 
 | 카드 | 내용 |
 |---|---|
-| 첫 카드 (session, now) | pane 폭 전체를 쓰며, 오른쪽에 스프라이트를 담고 그 왼쪽에 내용을 위쪽부터 놓으며, 글자 영역은 스프라이트와 같은 높이를 차지합니다. 도구 행은 도구를 실행하지 않을 때도 자리를 비워 두므로, 도구 호출이 시작되거나 끝나도 행 위치와 카드 높이가 바뀌지 않습니다. `/rename`으로 지정한 세션 이름(굵게), 프로젝트(branch, linked worktree이면 `⎇` 표시), 권한 모드·턴 수·출력 스타일, 작업 상태(진행 중이면 노란 ` ● WORKING ` 배지와 턴 경과 시간), 메인 세션이 지금 실행 중인 도구와 대상(파일 이름, 명령 앞부분, 검색어 등)과 실행 시간. 테두리와 이름에는 `/color`로 고른 색이 입혀지고, 고르지 않았으면 테두리는 흐린 노랑입니다(아래 "세션 이름과 색" 참고). `sessionColor`로 색을 고정하면 `/color`와 관계없이 그 색을 씁니다. 세션 이름이 없고 session·now가 모두 꺼져 있으면 스프라이트만 담고, 스프라이트도 없으면 그리지 않습니다 |
+| 첫 카드 (session, now) | pane 폭 전체를 쓰며, 오른쪽에 스프라이트를 담고 그 왼쪽에 내용을 위쪽부터 놓으며, 글자 영역은 스프라이트와 같은 높이를 차지합니다. 도구 행은 도구를 실행하지 않을 때도 자리를 비워 두므로, 도구 호출이 시작되거나 끝나도 행 위치와 카드 높이가 바뀌지 않습니다. `/rename`으로 지정한 세션 이름(굵게), 프로젝트(branch, linked worktree이면 `⎇` 표시), 권한 모드·턴 수·출력 스타일, 작업 상태(진행 중이면 강조색(기본 테마에서는 노랑)의 ` ● WORKING ` 배지와 턴 경과 시간), 메인 세션이 지금 실행 중인 도구와 대상(파일 이름, 명령 앞부분, 검색어 등)과 실행 시간. 테두리와 이름에는 `/color`로 고른 색이 입혀지고, 고르지 않았으면 테두리는 색 테마의 강조색을 흐리게 칠합니다(아래 "세션 이름과 색" 참고). `sessionColor`로 색을 고정하면 `/color`와 관계없이 그 색을 씁니다. 세션 이름이 없고 session·now가 모두 꺼져 있으면 스프라이트만 담고, 스프라이트도 없으면 그리지 않습니다 |
 | tasks | Claude의 작업 목록(`TaskCreated`·`TaskCompleted` 이벤트, `TaskUpdate`·`TodoWrite` 도구). 제목 옆에 완료 수(`1/3`)를 적고, 진행 중(`▶`, 진행형 문구), 대기(`○`), 완료(`✓`) 순서로 8개까지 보여 줍니다. 세션 로그와 함께 저장해 `claude -c`로 다시 열어도 남습니다. 작업이 없으면 카드도 없습니다. |
-| 모델 카드 (model, usage, totals) | 테두리는 기본으로 Claude 주황(테마 키 `claude`)이며, `modelColor`로 바꿉니다. model: 모델과 effort 게이지(totals가 꺼져 있으면 세션 비용도). usage: context 게이지와 토큰 수/창 크기(`98k/200k`), 5h와 7d 게이지와 리셋까지 남은 시간, 지금 속도라면 **리셋 전에 5h 한도에 도달할 때만** `≈ 50m to the 5h limit`(최근 1시간의 5h 사용률 변화로 계산). totals: 세션 비용, 세션 전체의 입력·출력 토큰(모든 턴의 `usage` 합계, 서브에이전트 포함)과 캐시에서 읽은 비율. 합계는 세션 로그와 함께 저장합니다 |
-| subagents | 서브에이전트 목록. 제목 옆에 상태별 수와 전체 수(`2 running · 1 idle · 3`)를 적습니다. 행마다 이름(이름이 없으면 타입)과 흐린 타입, 작업 설명, 경과 시간, 도구 호출 수, 지금 실행 중인 도구를 보여 줍니다(아래 "표시 항목과 출처" 참고) |
+| 모델 카드 (model, usage, totals) | 테두리는 색 테마의 색(기본 테마에서는 Claude 주황, 테마 키 `claude`)이며, `modelColor`로 바꿉니다. model: 모델과 effort 게이지(totals가 꺼져 있으면 세션 비용도). usage: context 게이지와 토큰 수/창 크기(`98k/200k`), 5h와 7d 게이지와 리셋까지 남은 시간, 지금 속도라면 **리셋 전에 5h 한도에 도달할 때만** `≈ 50m to the 5h limit`(최근 1시간의 5h 사용률 변화로 계산). totals: 세션 비용, 세션 전체의 입력·출력 토큰(모든 턴의 `usage` 합계, 서브에이전트 포함)과 캐시에서 읽은 비율. 합계는 세션 로그와 함께 저장합니다 |
+| subagents | 서브에이전트 목록. 제목 옆에 상태별 수와 전체 수(`2 running · 1 idle · 3`)를 적습니다. 행마다 이름(이름이 없으면 타입)과 흐린 타입, 작업 설명, 경과 시간, 도구 호출 수, 지금 실행 중인 도구를 보여 줍니다(아래 "표시 항목과 출처" 참고). 행을 누르면 그 서브에이전트의 transcript를 메인 화면에 띄웁니다(아래 "서브에이전트 보기" 참고) |
 | context | md 파일(출처별), hooks, 도구, MCP(도구·서버 수), skills, slash commands를 두 줄로 보여 줍니다. 기본으로 꺼져 있습니다(`showContext`) |
 | recent | 이 세션에서 최근에 쓴 skill(Skill 도구로 실행한 것)과 MCP 도구(`server:tool`)를 가장 최근에 쓴 것부터 각각 5개까지 보여 줍니다. skill은 `skills` 행에, MCP 도구는 `mcp` 행에 모으며, 폭이 좁으면 줄을 바꿉니다. 진행 중인 턴과 이 세션의 로그 줄에서 모으고, 서브에이전트가 쓴 것도 포함합니다. 쓴 것이 없으면 카드도 없습니다(`showRecent`) |
 | changes | 파일을 고친 가장 최근 턴에서 Claude가 Edit·Write 도구로 고친 파일을 처음 고친 순서대로 8개까지 보여 줍니다. 서브에이전트가 고친 파일도 포함합니다. 제목 옆에 파일 수를 적고, 행마다 작업 폴더 기준의 경로와, 그 턴이 파일을 고치기 전과 비교해 추가한 줄 수(초록 `+N`)와 삭제한 줄 수(빨강 `-N`)를 적습니다. 행을 누르면(또는 pane에 포커스가 있을 때 `1`~`9` 키) pane 전체에 그 파일의 diff가 열립니다(아래 "diff 보기" 참고). 고친 파일이 없으면 카드도 없습니다(`showChanges`) |
-| log | 끝난 턴마다 한 줄: 시각, 결과(✓ 완료, ⏹ 중단, ⊘ 거절, ✗ 오류), 소요 시간, 프롬프트 앞부분, 한 일(파일 수정 수, bash, 읽기·검색, 서브에이전트, 실패한 호출 `err`, 거부된 호출 `denied`), 출력 토큰, 캐시 적중률. 최신 순으로 **최근 5줄**을 보여 줍니다. 로그 카드가 pane의 마지막 카드이면, 로그 위에서 마우스 휠을 굴릴 때 pane은 그대로 두고 로그만 한 줄씩 넘어갑니다(아래 "로그 스크롤" 참고). `▲ older` / `▼ newer` 버튼(클릭, 또는 pane에 포커스가 있을 때 `o` / `n` 키)은 5줄씩 넘깁니다. 줄이 5줄보다 많으면 제목 아래에 검색칸이 생깁니다(아래 "로그 검색" 참고). 줄 앞의 `▸`를 누르면 그 줄 아래에 상세 내용이 펼쳐집니다(아래 "로그 상세" 참고). 세션마다 최근 50턴(`logTurns`)을 보관합니다(아래 "로그 보관" 참고). |
+| log | 끝난 턴마다 한 줄: 시각, 결과(✓ 완료, ⏹ 중단, ⊘ 거절, ✗ 오류), 소요 시간, 프롬프트 앞부분(백그라운드 서브에이전트나 셸의 완료 알림으로 시작된 턴은 그 알림의 요약), 한 일(파일 수정 수, bash, 읽기·검색, 서브에이전트, 실패한 호출 `err`, 거부된 호출 `denied`), 출력 토큰, 캐시 적중률. 최신 순으로 **최근 5줄**을 보여 줍니다. 로그 카드가 pane의 마지막 카드이면, 로그 위에서 마우스 휠을 굴릴 때 pane은 그대로 두고 로그만 한 줄씩 넘어갑니다(아래 "로그 스크롤" 참고). `▲ older` / `▼ newer` 버튼(클릭, 또는 pane에 포커스가 있을 때 `o` / `n` 키)은 5줄씩 넘깁니다. 줄이 5줄보다 많으면 제목 아래에 검색칸이 생깁니다(아래 "로그 검색" 참고). 줄 앞의 `▸`를 누르면 그 줄 아래에 상세 내용이 펼쳐집니다(아래 "로그 상세" 참고). 세션마다 최근 50턴(`logTurns`)을 보관합니다(아래 "로그 보관" 참고). |
 
 ### diff 보기
 
@@ -204,6 +220,21 @@ pane의 카드:
 - 파일 내용은 메모리에만 두고 파일로 저장하지 않습니다. 그래서 mod를 다시 로드하거나 `/clear`로 세션이 바뀌면 목록이 비고, 지난 세션의 턴은 diff를 볼 수 없습니다.
 - 512 KiB가 넘는 파일은 줄 수 대신 `?`를 적고 diff를 그리지 않습니다. diff 하나는 80,000자까지 그리며, 파일 전체가 이보다 길면 바뀐 부분만 보여 줍니다.
 - diff를 보는 동안 휠은 언제나 pane을 스크롤합니다.
+
+### 서브에이전트 보기
+
+- subagents 카드의 행을 누르면 Claude Code의 메인 화면에 그 서브에이전트의 transcript가 나타납니다(`$.ui.view`). Claude Code의 작업 목록에서 서브에이전트를 고르는 것과 같은 동작입니다. 보고 있는 서브에이전트는 이름에 밑줄이 그어집니다.
+- 보고 있는 서브에이전트의 행을 다시 누르거나, 목록 위에 생기는 `m: ◀ main conversation`을 누르면 메인 대화로 돌아갑니다. `m` 키는 pane에 포커스가 있을 때 동작합니다.
+- `agents: list`이면 band의 서브에이전트 행도 같은 방식으로 누를 수 있습니다.
+- Claude Code가 transcript를 열어 주지 않는 행은 누를 수 없습니다. 끝난 서브에이전트와, `teammateMode: tmux`로 따로 뜬 tmux 서버에서 도는 agent teams의 teammate가 여기에 해당합니다. 이 세션 안에서 도는 teammate는 누를 수 있습니다.
+
+### 서브에이전트 패널의 행
+
+- pane-mod는 플러그인 폴더의 `settings.json`으로 Claude Code의 `subagentStatusLine`을 지정합니다. 그래서 입력창 아래 서브에이전트 패널의 행이 band의 서브에이전트 행과 같은 내용(이름과 흐린 타입, 작업 설명, 경과 시간, 도구 호출 수, 지금 실행 중인 도구, 토큰 수)으로 바뀝니다.
+- 토큰 수는 Claude Code의 기본 행과 같은 방식으로 셉니다. 서브에이전트의 마지막 요청이 보낸 입력 토큰(캐시 포함)에 지금까지 받은 출력 토큰을 더한 값입니다. 서브에이전트의 요청을 아직 보지 못했으면 적지 않습니다.
+- mod는 서브에이전트가 목록에 있는 동안 2초마다 행을 확인하고, 내용이 바뀌었으면 데이터 폴더의 `subagents/<세션 ID>.jsonl`에 씁니다. Claude Code는 패널을 새로 그릴 때마다 `scripts/subagent-rows.sh`를 실행해서 그 파일을 읽습니다. 파일은 세션이 끝날 때 지웁니다.
+- Claude Code는 이 행을 일반 서브에이전트(Agent 도구로 띄운 `local_agent` 작업)에만 적용합니다. agent teams의 teammate 행에는 적용하지 않으므로, teammate 행은 Claude Code의 기본 형식으로 그려집니다.
+- 직접 지정한 `subagentStatusLine`이 사용자 설정에 있으면 그 설정이 우선합니다. `agents: off`이면 행을 쓰지 않으므로 패널은 Claude Code의 기본 행을 그립니다. pane-mod가 목록에서 뺀 행(끝나고 30초가 지난 서브에이전트 등)도 기본 행으로 그려집니다.
 
 ### 로그 스크롤
 
@@ -333,7 +364,7 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 | Claude 상태 | 동작 |
 |---|---|
 | 턴 사이 | `idle` 반복 |
-| 모델 턴 진행 중 (`turn.start`부터 `turn.complete`까지. 스킬처럼 모델 턴을 여는 슬래시 명령 포함) | `working` 반복 |
+| 모델 턴 진행 중 (메인 대화의 `turn.start`부터 `turn.complete`까지. 스킬처럼 모델 턴을 여는 슬래시 명령 포함. 서브에이전트와 teammate의 턴은 세지 않으므로, 메인 턴이 끝나면 백그라운드 서브에이전트가 남아 있어도 `idle`로 돌아갑니다) | `working` 반복 |
 | 모델 턴을 열지 않는 단발 명령 (`/effort`, `/reload-plugins` 등) | `idle` 유지 |
 | 턴 종료 (완료, 중단, 거절, API 오류) | 바로 `idle`로 전환 |
 
@@ -378,12 +409,12 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 | 2 | 모델(반전 배지, `Opus 5.5` 같은 표시 이름), effort(5단계 게이지), 세션 비용 | `$.session.model()`, `turn.step`의 `effort`, `/effort` 출력, 설정의 `modelSettings`·`effortLevel`, `usage().cost` |
 | 3 | 컨텍스트 %, 5시간·주간 한도 %와 리셋까지 남은 시간 | `usage().context`, `usage().rateLimits` |
 | 4 | md 파일(출처별), hooks, 기본 도구·MCP(서버 수)·skills·slash commands | `usage({ breakdown: 'summary' })`, `$.settings.read()`, `$.tool.list()` |
-| 5 | 권한 모드, 작업 상태(진행 중이면 노란 배지와 경과 시간), 지금 실행 중인 도구, 턴 수, 출력 스타일 | `classic.UserPromptSubmit`, `AbovePrompt.isWorking`, `$.session.turns()`, `prompt.compose` |
+| 5 | 권한 모드, 작업 상태(진행 중이면 강조색의 배지와 경과 시간), 지금 실행 중인 도구, 턴 수, 출력 스타일 | `classic.UserPromptSubmit`, `AbovePrompt.isWorking`, `$.session.turns()`, `prompt.compose` |
 | 6~ | 서브에이전트(`agents` 설정: 상태별 개수 한 줄, 또는 실행 중인 것 먼저 한 줄씩. 끝난 것은 30초 동안 셈) | `$.agent.list()`, `tool.call`의 `agentId` |
 
-- effort는 5단계 게이지로 표시합니다. low `▰▱▱▱▱`(회색), medium `▰▰▱▱▱`(초록), high `▰▰▰▱▱`(노랑), xhigh `▰▰▰▰▱`(주황), max `▰▰▰▰▰`(빨강, 굵게)입니다. 값은 메인 세션의 모델 요청(`turn.step`)이 실어 보내는 값을 가장 먼저 쓰고, `/effort`로 바꾸면 transcript에 남는 그 출력 행(`Set effort level to …`)을 읽어 바로 바꿉니다. 메뉴에서 고르면 명령 결과에는 문구가 담기지 않기 때문입니다. `max`는 설정 파일에 저장되지 않으므로 이 행이 유일한 단서입니다. 첫 요청 전에는 `CLAUDE_CODE_EFFORT_LEVEL`, 설정의 `modelSettings[모델].effortLevel`, 최상위 `effortLevel` 순서로 추정합니다. `/model`로 모델을 바꾸면 새 모델 기준으로 다시 추정합니다. 숫자 예산이면 `N tokens`로 표시합니다.
+- effort는 5단계 게이지로 표시합니다. low `▰▱▱▱▱`(회색), medium `▰▰▱▱▱`(초록), high `▰▰▰▱▱`(노랑), xhigh `▰▰▰▰▱`(주황), max `▰▰▰▰▰`(빨강, 굵게)입니다. 색은 기본 테마의 색이며, 다른 테마에서는 그 테마의 같은 계열 색을 씁니다. 값은 메인 세션의 모델 요청(`turn.step`)이 실어 보내는 값을 가장 먼저 쓰고, `/effort`로 바꾸면 transcript에 남는 그 출력 행(`Set effort level to …`)을 읽어 바로 바꿉니다. 메뉴에서 고르면 명령 결과에는 문구가 담기지 않기 때문입니다. `max`는 설정 파일에 저장되지 않으므로 이 행이 유일한 단서입니다. 첫 요청 전에는 `CLAUDE_CODE_EFFORT_LEVEL`, 설정의 `modelSettings[모델].effortLevel`, 최상위 `effortLevel` 순서로 추정합니다. `/model`로 모델을 바꾸면 새 모델 기준으로 다시 추정합니다. 숫자 예산이면 `N tokens`로 표시합니다.
 - 모델은 Claude Code의 메뉴처럼 `Opus 5.5`, `Fable 5.1`, `Sonnet 3.5` 같은 표시 이름으로 보여 줍니다. 모델 ID(`claude-opus-5-5[1m]`, `claude-3-5-sonnet-20241022`, `us.anthropic.claude-sonnet-5-5` 등)에서 계열과 버전을 읽고, 날짜·제공자 접두사·context 표시는 뺍니다. 계열이나 형식을 알 수 없는 ID(이 mod보다 새로운 모델 등)는 받은 그대로 보여 줍니다.
-- 사용량 막대(ctx, 5h, 7d)는 모두 10칸의 `▰▱`이고, 채워진 칸과 숫자는 사용률에 따라 색이 바뀝니다. 0~59%는 초록, 60~89%는 노랑, 90% 이상은 빨강입니다. 빈칸은 테마의 회색(`subtle`)으로 칠합니다. `▰▱`는 칸 높이보다 낮아서, 위아래 줄의 막대가 서로 붙어 보이지 않습니다. effort 게이지를 포함한 모든 게이지의 문자는 `barFilled`(채워진 칸)와 `barEmpty`(빈칸)로 바꿀 수 있으며, 색은 바뀌지 않습니다.
+- 사용량 막대(ctx, 5h, 7d)는 모두 10칸의 `▰▱`이고, 채워진 칸과 숫자는 사용률에 따라 색이 바뀝니다. 0~59%는 초록, 60~89%는 노랑, 90% 이상은 빨강입니다. 빈칸은 Claude Code 테마의 회색(`subtle`)으로 칠합니다. 색은 기본 테마의 색이며, 다른 테마에서는 위 "색 테마" 표의 색을 씁니다. `▰▱`는 칸 높이보다 낮아서, 위아래 줄의 막대가 서로 붙어 보이지 않습니다. effort 게이지를 포함한 모든 게이지의 문자는 `barFilled`(채워진 칸)와 `barEmpty`(빈칸)로 바꿀 수 있으며, 색은 바뀌지 않습니다.
 - 사용량·턴 수·서브에이전트는 2초마다, branch·hooks·tools·md 파일은 15초마다 읽습니다. 메인 턴이 끝날 때도 한 번 더 읽습니다.
 - branch는 `.git/HEAD`에서 읽습니다. linked worktree(`git worktree add`로 만든 작업 폴더나 Claude Code의 worktree)에서는 `.git` 파일이 가리키는 그 worktree의 HEAD를 읽고, branch 뒤에 `⎇`를 붙여 메인 체크아웃이 아니라는 것을 알립니다. worktree의 이름은 보통 그 폴더의 이름과 같고 프로젝트 자리에 이미 나오므로 따로 적지 않습니다.
 - 서브에이전트에 `Agent({ name })`으로 이름을 붙였으면 이름을 먼저 보여 주고 타입은 흐리게 뒤에 붙입니다. 일을 마치고 메시지를 기다리는 teammate는 running이 아니라 `idle`로 세고, idle인 동안에는 경과 시간을 멈춥니다. 자기 터미널에서 도는 teammate의 도구 호출은 이 세션의 hook을 거치지 않으므로, 도구 호출 수가 0이면 적지 않습니다. 입력창 아래 Claude Code agent panel의 진행 요약(`label`)은 mod가 받는 정보에 없으므로, pane-mod는 서브에이전트를 띄울 때 받은 작업 설명을 보여 줍니다.
@@ -393,10 +424,12 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 
 ## 이 mod가 컴퓨터에서 하는 일
 
-- 네트워크 요청은 없습니다(`$.http`를 호출하지 않습니다). 외부 프로그램은 두 경우에만 실행합니다. log의 `f: open file`을 누르면 로그 Markdown 파일을 엽니다(`$.process.run(['/usr/bin/open', 로그 파일])`, 없으면 `xdg-open`). 로그를 저장할 때 보관 한도를 넘은 로그 파일이 있으면 `/bin/rm -f -- <파일들>`로 지웁니다. 지우는 대상은 데이터 폴더의 `sessions/`에 있는 로그 파일뿐입니다. `claude plugin validate .`의 `calls:` 목록에서 `$.process.run (via openLogFile, removeKept)`으로 확인할 수 있습니다.
+- 네트워크 요청은 없습니다(`$.http`를 호출하지 않습니다). mod가 외부 프로그램을 실행하는 경우는 세 가지뿐입니다. log의 `f: open file`을 누르면 로그 Markdown 파일을 엽니다(`$.process.run(['/usr/bin/open', 로그 파일])`, 없으면 `xdg-open`). 로그를 저장할 때 보관 한도를 넘은 로그 파일이 있으면 `/bin/rm -f -- <파일들>`로 지웁니다. 서브에이전트 패널의 행 파일을 썼던 세션이 끝나면 그 파일을 같은 명령으로 지웁니다. 지우는 대상은 데이터 폴더의 `sessions/`에 있는 로그 파일과 `subagents/`에 있는 행 파일뿐입니다. `claude plugin validate .`의 `calls:` 목록에서 `$.process.run (via openLogFile, removeKept)`으로 확인할 수 있습니다.
+- 플러그인 폴더의 `settings.json`은 Claude Code의 `subagentStatusLine`을 지정합니다. 그래서 Claude Code는 서브에이전트 패널을 새로 그릴 때마다 `sh scripts/subagent-rows.sh`를 실행합니다. 이 스크립트는 표준 입력에서 세션 ID만 읽고, 데이터 폴더의 `subagents/<세션 ID>.jsonl`이 있으면 그 내용을 그대로 출력합니다. Claude Code가 알려 준 플러그인 데이터 폴더에 이 파일이 없으면 mod가 기본으로 쓰는 `~/.claude/plugins/data/pane-mod-pane-mod`에서 찾습니다. `--plugin-dir`로 띄운 작업 사본은 Claude Code가 `pane-mod-inline`이라는 폴더를 알려 주지만, mod는 기본 폴더에 쓰기 때문입니다. 다른 파일을 읽거나 쓰지 않습니다.
+- 서브에이전트의 행을 누르면 그 서브에이전트의 transcript를 메인 화면에 띄웁니다(`$.ui.view`). 누르지 않으면 화면을 바꾸지 않습니다.
 - 슬래시 명령의 출력 행(`session.append`의 `door: 'command'`)을 읽지만, `/effort`의 레벨 문구, `/rename`의 이름 문구, `/color`의 색 문구만 찾고 다른 내용은 쓰지 않습니다.
 - 승인 창 아래 한 줄과 작업 로그를 위해 설정 훅 이벤트(`PermissionRequest`, `Notification`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`)를 받지만, 결정을 바꾸지 않고 그대로 넘깁니다.
-- 파일 읽기는 `.git` 경로 탐색과 `HEAD` 읽기, 스프라이트·소리 폴더의 파일 목록 읽기(`$.fs.list`), `png` 소스를 쓸 때의 스프라이트 PNG 읽기, `soundDir`로 지정한 폴더의 소리 파일 읽기, 보관한 로그 파일과 그 폴더의 목록 읽기, Edit·Write 도구가 고친 파일 읽기(changes 카드의 줄 수와 diff를 위해 읽으며, 내용은 메모리에만 둡니다)뿐입니다. 파일 쓰기는 턴이 끝날 때마다(그리고 턴이 진행되는 동안 세션이 끝날 때) 세션의 로그 파일을 쓰는 것, `f: open file`을 누를 때 로그 Markdown 파일을 쓰는 것, `rm`을 실행할 수 없을 때 지울 로그 파일을 비우는 것뿐입니다.
+- 파일 읽기는 `.git` 경로 탐색과 `HEAD` 읽기, 스프라이트·소리 폴더의 파일 목록 읽기(`$.fs.list`), `png` 소스를 쓸 때의 스프라이트 PNG 읽기, `soundDir`로 지정한 폴더의 소리 파일 읽기, 보관한 로그 파일과 그 폴더의 목록 읽기, Edit·Write 도구가 고친 파일 읽기(changes 카드의 줄 수와 diff를 위해 읽으며, 내용은 메모리에만 둡니다)뿐입니다. 파일 쓰기는 턴이 끝날 때마다(그리고 턴이 진행되는 동안 세션이 끝날 때) 세션의 로그 파일을 쓰는 것, 서브에이전트가 목록에 있는 동안 서브에이전트 패널의 행 파일(`subagents/<세션 ID>.jsonl`, 서브에이전트의 이름·타입·작업 설명·경과 시간·도구 호출 수·실행 중인 도구·토큰 수)을 쓰는 것, `f: open file`을 누를 때 로그 Markdown 파일을 쓰는 것, `rm`을 실행할 수 없을 때 지울 파일을 비우는 것뿐입니다.
 - 작업 로그를 플러그인 데이터 폴더의 `sessions/`에 세션별 JSON 파일로 저장합니다(위 "로그 보관" 참고). 여기에는 **각 턴의 프롬프트(태그를 뺀 최대 300자)**, **수정한 파일 이름과 실행한 명령의 첫 줄**, **실패한 도구 호출의 오류 메시지 첫 줄(최대 100자)**, **승인 창이 열리거나 거부된 호출의 대상(파일 이름, 명령 앞부분 등)**, 도구별 호출 수, skill과 MCP 도구의 이름, 서브에이전트의 종류와 작업 설명, 시각, 소요 시간, 도구 사용 수, 출력 토큰, 캐시 적중률, 세션 색, 작업 목록, 토큰 합계가 들어갑니다. 외부로 보내지는 않습니다.
 - 로그 상세의 `copy prompt`를 누르면 그 프롬프트를 클립보드에 씁니다(`$.ui.copy`). 누르지 않으면 클립보드를 건드리지 않습니다.
 - Ghostty와 kitty에서는 터미널이 스프라이트 PNG를 직접 읽습니다(`Image`의 `file` 소스). 이미지 데이터가 엔진을 거치지 않습니다.
@@ -412,7 +445,9 @@ pane이 붙는 쪽(오른쪽)은 Claude Code가 정합니다. mod가 왼쪽을 �
 | `.claude-plugin/marketplace.json` | 이 폴더를 마켓플레이스로 등록합니다(`source: "./"`). |
 | `hooks/hooks.json` | hooks module 경로(`./register.tsx`) |
 | `hooks/register.tsx` | 데이터 수집, asset 폴더 탐색, 스프라이트 동작 전환, 소리, 알림, band와 pane 렌더링 |
-| `hooks/format.ts` | 게이지, 색상, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 줄 단위 diff 같은 순수 함수 |
+| `hooks/format.ts` | 게이지, 색상, 시간 표기, git HEAD 해석, 프레임·소리 파일 목록, 줄 단위 diff, 서브에이전트 패널의 행 같은 순수 함수 |
+| `settings.json` | 플러그인이 켜져 있는 동안 적용되는 설정. Claude Code의 `subagentStatusLine`을 `scripts/subagent-rows.sh`로 지정합니다. |
+| `scripts/subagent-rows.sh` | Claude Code가 서브에이전트 패널을 그릴 때 실행하는 스크립트. mod가 데이터 폴더에 써 둔 이 세션의 행을 출력합니다. |
 | `types/index.d.ts` | 공유 타입과 `$.state` 계약(`snap`, `frame`, `logOffset`, `logOpen`, `logQuery`, `diffOpen`) |
 | `tests/pane-mod.test.tsx` | 화면 구성, 서브에이전트 목록, 스프라이트 전환, asset이 없을 때의 동작 테스트 |
 | `assets/{idle,working,complete}/` | 선택 사항인 스프라이트 프레임 폴더(git 제외, 저장소에는 없음). 보통은 `spriteDir`로 다른 폴더를 지정합니다. |

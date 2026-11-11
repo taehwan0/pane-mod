@@ -16,6 +16,12 @@ export type AgentRow = {
   seconds: number
   tools: number
   tool: string | null
+  /**
+   * Whether the main view can show its transcript (`$.ui.view`): not once it has
+   * ended, nor for a teammate that runs in a terminal pane of its own (tmux),
+   * whose transcript is not in this session.
+   */
+  isViewable: boolean
 }
 
 /** What the main thread is doing now: the tool it runs, what on, and for how long. */

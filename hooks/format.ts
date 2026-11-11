@@ -78,8 +78,65 @@ export const bar = (percent: number, width: number, glyphs: BarGlyphs = BAR_GLYP
   return [glyphs.filled.repeat(lit), glyphs.empty.repeat(width - lit)]
 }
 
-/** Green under 60%, yellow from 60%, red from 90%. */
-export const tint = (percent: number): string => (percent >= 90 ? '#ef5350' : percent >= 60 ? '#fbc02d' : '#66bb6a')
+/** The color themes the `colorTheme` setting names, the HUD's own first. */
+export const COLOR_THEMES = ['default', 'darcula', 'one-dark', 'github-dark'] as const
+
+export type ColorTheme = (typeof COLOR_THEMES)[number]
+
+/**
+ * The colors a theme draws the HUD in, by what each says. A theme keeps the
+ * sense of each (green to spare, red nearly full) in its own tones; the
+ * borders are a theme key or a `#rrggbb` hex, the rest hexes.
+ */
+export type Palette = {
+  /** The HUD's own color: the working badge, the running marks, the project's name, the band's rule, and the first card's border (dim) where nothing else colors it. */
+  accent: string
+  /** The text on the working badge. */
+  onAccent: string
+  /** The branch after the project's name. */
+  branch: string
+  /** The model card's border where `modelColor` is `auto`. */
+  model: string
+  /** The other cards' border where `cardColor` is `auto`, and a gauge's unlit steps. */
+  line: string
+  /** Room to spare, a medium effort, what ended well, the lines a change adds, plan mode. */
+  good: string
+  /** Filling up, a high effort. */
+  warn: string
+  /** An xhigh effort, a refused turn, edits accepted without asking. */
+  hot: string
+  /** Nearly full, a max effort, what failed, the lines a change removes, permissions bypassed. */
+  bad: string
+  /** A subagent waiting, auto mode. */
+  info: string
+  /** A low effort. */
+  muted: string
+}
+
+/** A color a palette has, by what it says. */
+export type Tone = Exclude<keyof Palette, 'onAccent' | 'model' | 'line'>
+
+/**
+ * The themes' palettes: the HUD's own, and those of IntelliJ's Darcula, Atom's
+ * One Dark and GitHub's dark theme, from each one's syntax and terminal colors.
+ */
+export const PALETTES: Readonly<Record<ColorTheme, Palette>> = {
+  default: { accent: '#F7D02C', onAccent: '#1b1b1b', branch: '#ba68c8', model: 'claude', line: 'subtle', good: '#66bb6a', warn: '#fbc02d', hot: '#ffa726', bad: '#ef5350', info: '#4fc3f7', muted: '#9e9e9e' },
+  darcula: { accent: '#FFC66D', onAccent: '#2B2B2B', branch: '#9876AA', model: '#CC7832', line: '#555555', good: '#629755', warn: '#BBB529', hot: '#CC7832', bad: '#FF6B68', info: '#6897BB', muted: '#808080' },
+  'one-dark': { accent: '#61AFEF', onAccent: '#282C34', branch: '#C678DD', model: '#C678DD', line: '#4B5263', good: '#98C379', warn: '#E5C07B', hot: '#D19A66', bad: '#E06C75', info: '#56B6C2', muted: '#7F848E' },
+  'github-dark': { accent: '#58A6FF', onAccent: '#0D1117', branch: '#D2A8FF', model: '#F78166', line: '#484F58', good: '#3FB950', warn: '#D29922', hot: '#DB6D28', bad: '#F85149', info: '#39C5CF', muted: '#8B949E' },
+}
+
+/** The color theme a setting names, in any case; `default` for anything else. */
+export const colorThemeOf = (value: unknown): ColorTheme => {
+  const text = typeof value === 'string' ? value.trim().toLowerCase() : ''
+
+  return COLOR_THEMES.find(theme => theme === text) ?? 'default'
+}
+
+/** Green under 60%, yellow from 60%, red from 90%, in the palette's tones. */
+export const tint = (percent: number, palette: Palette = PALETTES.default): string =>
+  percent >= 90 ? palette.bad : percent >= 60 ? palette.warn : palette.good
 
 /** How long until `at`, as `6d8h`, `4h15m`, `14m` or `<1m`. */
 export const until = (at: number, now: number): string => {
@@ -208,6 +265,30 @@ export const agentCounts = (states: readonly AgentState[]): string =>
     return count > 0 ? [`${count} ${state}`] : []
   }), `${states.length}`].join(' · ')
 
+/** ANSI's dim on and off: the subagent panel draws a row's text as it is given, escapes and all. */
+const DIM_ON = '\u001b[2m'
+const DIM_OFF = '\u001b[22m'
+
+/** A text with its control characters made spaces, so that what an agent was called cannot write escapes of its own. */
+const plainOf = (text: string): string => text.replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+
+/**
+ * A subagent's row for Claude Code's subagent panel, as the band lists it: its
+ * name (its type after it), its task, then dim how long it has run, its tool
+ * calls and the one it runs, and its tokens where its requests were seen (the
+ * last request's input with every output since, as the panel's own row counts).
+ */
+export const panelRowOf = (agent: AgentRow, tokens: number | undefined): string =>
+  `${plainOf(agent.name ?? agent.type)}${agent.name === null ? '' : ` ${DIM_ON}${plainOf(agent.type)}${DIM_OFF}`}  ${plainOf(agent.description)}` +
+  `${DIM_ON} · ${duration(agent.seconds)}${plainOf(toolsOf(agent))}${tokens === undefined ? '' : ` · ${tokensShort(tokens)} tokens`}${DIM_OFF}`
+
+/**
+ * What the subagent panel's script hands on: a JSON line for each subagent the
+ * HUD lists, by the id the panel's rows carry (the agent's own); '' for none.
+ */
+export const panelRowsText = (agents: readonly AgentRow[], tokens: ReadonlyMap<string, number>): string =>
+  agents.map(agent => `${JSON.stringify({ id: agent.id, content: panelRowOf(agent, tokens.get(agent.id)) })}\n`).join('')
+
 /** A model's name without a `[1m]` tag or a date, so two spellings of one model compare equal. */
 export const modelBase = (model: string): string => model.replace(/\[[^\]]*\]$/, '').replace(/-\d{8}$/, '')
 
@@ -262,9 +343,9 @@ export const effortGauge = (level: EffortLevel, glyphs: BarGlyphs = BAR_GLYPHS):
   return [glyphs.filled.repeat(lit), glyphs.empty.repeat(EFFORT_LEVELS.length - lit)]
 }
 
-/** Gray at low, warming to red at max. */
-export const effortTint = (level: EffortLevel): string =>
-  ({ low: '#9e9e9e', medium: '#66bb6a', high: '#fbc02d', xhigh: '#ffa726', max: '#ef5350' })[level]
+/** Gray at low, warming to red at max, in the palette's tones. */
+export const effortTint = (level: EffortLevel, palette: Palette = PALETTES.default): string =>
+  ({ low: palette.muted, medium: palette.good, high: palette.warn, xhigh: palette.hot, max: palette.bad })[level]
 
 /**
  * What a `/effort` line says it set: a level, `other` for a word that is none
@@ -417,6 +498,21 @@ export const promptOf = (text: string, max: number): string =>
       .join('\n'),
     max,
   )
+
+/**
+ * What a turn was asked, as its log line keeps it. A turn the engine starts on
+ * a task's notification (a background agent or shell that stopped) brings that
+ * notification's markup, whose ids and paths say nothing: each notification's
+ * summary (`Agent "…" finished`) stands for it, unless a prompt came with them.
+ */
+export const askedOf = (text: string, max: number): string => {
+  const notices = text.match(/<task-notification>[\s\S]*?<\/task-notification>/g) ?? []
+  const typed = promptOf(notices.reduce((rest, notice) => rest.replace(notice, ' '), text), max)
+
+  if (typed !== '' || notices.length === 0) return typed
+
+  return promptOf(notices.map(notice => /<summary>([\s\S]*?)<\/summary>/.exec(notice)?.[1] ?? '').join('\n'), max)
+}
 
 /** What a tool call works on, in a few words: a file's name, a command's start, a pattern, a query, a page. */
 export const targetOf = (args: Readonly<Record<string, unknown>>): string | null => {
